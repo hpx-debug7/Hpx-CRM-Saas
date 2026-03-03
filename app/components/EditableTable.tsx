@@ -1,0 +1,517 @@
+'use client';
+
+import React, { useState, useCallback, useEffect, useRef } from 'react';
+import type { Lead, LeadFilters } from '../types/shared';
+import LeadTable from './LeadTable';
+import PasswordModal from './PasswordModal';
+import PasswordSettingsModal from './PasswordSettingsModal';
+import ColumnManagementModal from './ColumnManagementModal';
+import RowManagementModal from './RowManagementModal';
+import { useUsers } from '../context/UserContext';
+
+interface EditableTableProps {
+  filters?: LeadFilters;
+  onLeadClick?: (lead: Lead) => void;
+  selectedLeads?: Set<string>;
+  onLeadSelection?: (leadId: string, checked: boolean) => void;
+  selectAll?: boolean;
+  onSelectAll?: (checked: boolean) => void;
+  leads?: Lead[];
+  showActions?: boolean;
+  actionButtons?: (lead: Lead) => React.ReactNode;
+  emptyMessage?: string;
+  className?: string;
+  editable?: boolean;
+  onCellUpdate?: (leadId: string, field: string, value: string) => void;
+  validationErrors?: Record<string, Record<string, string>>;
+  headerEditable?: boolean;
+  onHeaderUpdate?: (field: string, newLabel: string) => void;
+  onColumnAdded?: (column: any) => void;
+  onColumnDeleted?: (fieldKey: string) => void;
+  onColumnReorder?: (newOrder: string[]) => void;
+  onRowsAdded?: (count: number) => void;
+  onRowsDeleted?: (count: number) => void;
+  onExportClick?: () => void;
+  highlightedLeadId?: string | null;
+  roleFilter?: (leads: Lead[]) => Lead[]; // Role-based filter function for SALES_EXECUTIVE visibility
+}
+
+const EditableTable: React.FC<EditableTableProps> = ({
+  filters = {},
+  onLeadClick,
+  selectedLeads = new Set(),
+  onLeadSelection,
+  selectAll = false,
+  onSelectAll,
+  leads: customLeads,
+  showActions = false,
+  actionButtons,
+  emptyMessage = "No leads found matching the current filters.",
+  className = "",
+  editable = false,
+  onCellUpdate,
+  validationErrors = {},
+  headerEditable = true,
+  onColumnAdded,
+  onColumnDeleted,
+  onColumnReorder,
+  onRowsAdded,
+  onRowsDeleted,
+  onExportClick,
+  highlightedLeadId,
+  roleFilter
+}) => {
+  const { currentUser, isAuthenticated } = useUsers();
+  const [editMode, setEditMode] = useState(false);
+  const [headerEditMode, setHeaderEditMode] = useState(false);
+  const [isStickyEnabled, setIsStickyEnabled] = useState<boolean>(currentUser?.stickyLeadTableHeader ?? true);
+  const [isSavingStickyPreference, setIsSavingStickyPreference] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [undoStack, setUndoStack] = useState<Array<{ leadId: string; field: string; oldValue: string; newValue: string }>>([]);
+  const [redoStack, setRedoStack] = useState<Array<{ leadId: string; field: string; oldValue: string; newValue: string }>>([]);
+  const [verifiedOperations, setVerifiedOperations] = useState<Set<string>>(new Set());
+  const [passwordModalOpen, setPasswordModalOpen] = useState(false);
+  const [passwordSettingsOpen, setPasswordSettingsOpen] = useState(false);
+  const [columnManagementOpen, setColumnManagementOpen] = useState(false);
+  const [rowManagementOpen, setRowManagementOpen] = useState(false);
+  const [pendingOperation, setPendingOperation] = useState<string | null>(null);
+  const initializedUserIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const currentUserId = currentUser?.userId || null;
+    if (!currentUserId) return;
+    if (initializedUserIdRef.current === currentUserId) return;
+
+    // Initialize once per user session to avoid resetting preference on re-renders.
+    if (typeof currentUser?.stickyLeadTableHeader === 'boolean') {
+      setIsStickyEnabled(currentUser.stickyLeadTableHeader);
+    } else {
+      setIsStickyEnabled(true);
+    }
+    initializedUserIdRef.current = currentUserId;
+  }, [currentUser?.userId, currentUser?.stickyLeadTableHeader]);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    let isMounted = true;
+    const loadPreferences = async () => {
+      try {
+        const response = await fetch('/api/user/preferences', { method: 'GET', credentials: 'same-origin' });
+        if (!response.ok) return;
+        const data = await response.json();
+        if (!isMounted) return;
+        if (typeof data?.preferences?.stickyLeadTableHeader === 'boolean') {
+          setIsStickyEnabled(data.preferences.stickyLeadTableHeader);
+        }
+      } catch (error) {
+        console.error('Failed to load user preferences:', error);
+      }
+    };
+
+    loadPreferences();
+    return () => {
+      isMounted = false;
+    };
+  }, [isAuthenticated, currentUser?.userId]);
+
+  const handleStickyHeaderToggle = useCallback(async (checked: boolean) => {
+    const previousValue = isStickyEnabled;
+    setIsStickyEnabled(checked);
+    setIsSavingStickyPreference(true);
+
+    try {
+      const response = await fetch('/api/user/preferences', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ stickyLeadTableHeader: checked }),
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        setIsStickyEnabled(previousValue);
+        console.warn(payload?.error || `Failed to save sticky header preference (${response.status})`);
+        return;
+      }
+
+      const data = await response.json();
+      if (typeof data?.preferences?.stickyLeadTableHeader === 'boolean') {
+        setIsStickyEnabled(data.preferences.stickyLeadTableHeader);
+      }
+    } catch (error) {
+      console.warn('Failed to save sticky header preference:', error);
+      setIsStickyEnabled(previousValue);
+    } finally {
+      setIsSavingStickyPreference(false);
+    }
+  }, [isStickyEnabled]);
+
+  // Toggle header edit mode
+  const toggleHeaderEditMode = useCallback(() => {
+    setHeaderEditMode(prev => !prev);
+  }, []);
+
+  const handleColumnManagement = useCallback(() => {
+    if (verifiedOperations.has('columnManagement') || sessionStorage.getItem('verified_columnManagement')) {
+      setColumnManagementOpen(true);
+    } else {
+      setPendingOperation('columnManagement');
+      setPasswordModalOpen(true);
+    }
+  }, [verifiedOperations]);
+
+  const handleRowManagement = useCallback(() => {
+    if (verifiedOperations.has('rowManagement') || sessionStorage.getItem('verified_rowManagement')) {
+      setRowManagementOpen(true);
+    } else {
+      setPendingOperation('rowManagement');
+      setPasswordModalOpen(true);
+    }
+  }, [verifiedOperations]);
+
+  const handlePasswordSuccess = useCallback(() => {
+    setPasswordModalOpen(false);
+
+    if (pendingOperation) {
+      setVerifiedOperations(prev => new Set([...prev, pendingOperation]));
+
+      switch (pendingOperation) {
+        case 'editMode':
+          setEditMode(!editMode);
+          break;
+        case 'headerEdit':
+          setHeaderEditMode(!headerEditMode);
+          break;
+        case 'columnManagement':
+          setColumnManagementOpen(true);
+          break;
+        case 'rowManagement':
+          setRowManagementOpen(true);
+          break;
+      }
+
+      setPendingOperation(null);
+    }
+  }, [pendingOperation, editMode, headerEditMode]);
+
+  // Handle cell update with undo/redo support
+  const handleCellUpdate = useCallback(async (leadId: string, field: string, value: string) => {
+    if (!onCellUpdate) return;
+
+    // Find the current value for undo support
+    const currentLead = customLeads?.find(lead => lead.id === leadId);
+    if (!currentLead) return;
+
+    const oldValue = String((currentLead as any)[field] || '');
+
+    // Add to undo stack
+    setUndoStack(prev => [...prev, { leadId, field, oldValue, newValue: value }]);
+    setRedoStack([]); // Clear redo stack when new action is performed
+
+    setSaveStatus('saving');
+
+    try {
+      await onCellUpdate(leadId, field, value);
+      setSaveStatus('saved');
+
+      // Auto-hide saved status after 2 seconds
+      setTimeout(() => {
+        setSaveStatus('idle');
+      }, 2000);
+    } catch (error) {
+      setSaveStatus('error');
+      console.error('Error updating cell:', error);
+
+      // Auto-hide error status after 3 seconds
+      setTimeout(() => {
+        setSaveStatus('idle');
+      }, 3000);
+    }
+  }, [onCellUpdate, customLeads]);
+
+  // Undo functionality - batched state updates
+  const handleUndo = useCallback(() => {
+    if (undoStack.length === 0 || !onCellUpdate) return;
+
+    const lastAction = undoStack[undoStack.length - 1];
+    if (!lastAction) return;
+
+    // Batch state updates - use functional updates to avoid stale closures
+    setRedoStack(prev => [...prev, lastAction]);
+    setUndoStack(prev => prev.slice(0, -1));
+
+    // Perform undo
+    onCellUpdate(lastAction.leadId, lastAction.field, lastAction.oldValue);
+  }, [undoStack, onCellUpdate]);
+
+  // Redo functionality - batched state updates
+  const handleRedo = useCallback(() => {
+    if (redoStack.length === 0 || !onCellUpdate) return;
+
+    const lastAction = redoStack[redoStack.length - 1];
+    if (!lastAction) return;
+
+    // Batch state updates - use functional updates to avoid stale closures
+    setUndoStack(prev => [...prev, lastAction]);
+    setRedoStack(prev => prev.slice(0, -1));
+
+    // Perform redo
+    onCellUpdate(lastAction.leadId, lastAction.field, lastAction.newValue);
+  }, [redoStack, onCellUpdate]);
+
+  // Keyboard shortcuts
+  React.useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.ctrlKey || event.metaKey) {
+        switch (event.key) {
+          case 'z':
+            event.preventDefault();
+            if (event.shiftKey) {
+              handleRedo();
+            } else {
+              handleUndo();
+            }
+            break;
+          case 's':
+            event.preventDefault();
+            // Save all changes (could be implemented)
+            break;
+          case 'h':
+            if (headerEditable) {
+              event.preventDefault();
+              toggleHeaderEditMode();
+            }
+            break;
+        }
+      }
+    };
+
+    if (editMode) {
+      document.addEventListener('keydown', handleKeyDown);
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [editMode, handleUndo, handleRedo]);
+
+  const getSaveStatusIcon = () => {
+    switch (saveStatus) {
+      case 'saving':
+        return (
+          <div className="flex items-center space-x-1 text-blue-600">
+            <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-600"></div>
+            <span className="text-xs">Saving...</span>
+          </div>
+        );
+      case 'saved':
+        return (
+          <div className="flex items-center space-x-1 text-green-600">
+            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+            </svg>
+            <span className="text-xs">Saved</span>
+          </div>
+        );
+      case 'error':
+        return (
+          <div className="flex items-center space-x-1 text-red-600">
+            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+            </svg>
+            <span className="text-xs">Error</span>
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <div className={`relative ${className}`}>
+      {/* Editable Table Toolbar */}
+      {editable && (
+        <div className="bg-white border-b border-gray-200 px-4 py-2 flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+
+            {/* Undo/Redo Buttons */}
+            {editMode && (
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={handleUndo}
+                  disabled={undoStack.length === 0}
+                  className="px-2 py-1 text-xs font-medium bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  title="Undo (Ctrl+Z)"
+                >
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                  </svg>
+                </button>
+                <button
+                  onClick={handleRedo}
+                  disabled={redoStack.length === 0}
+                  className="px-2 py-1 text-xs font-medium bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  title="Redo (Ctrl+Shift+Z)"
+                >
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 10H11a8 8 0 00-8 8v2m18-10l-6 6m6-6l-6-6" />
+                  </svg>
+                </button>
+              </div>
+            )}
+
+
+            {/* Column Management */}
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={handleColumnManagement}
+                className="px-3 py-1 text-xs font-medium bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                title="Manage columns (Ctrl+Shift+C)"
+              >
+                <svg className="w-3 h-3 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                </svg>
+                Columns
+              </button>
+
+              <button
+                onClick={handleRowManagement}
+                className="px-3 py-1 text-xs font-medium bg-orange-600 text-white rounded hover:bg-orange-700 transition-colors"
+                title="Manage rows (Ctrl+Shift+R)"
+              >
+                <svg className="w-3 h-3 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                Rows
+              </button>
+            </div>
+
+            {/* Save Status */}
+            {editMode && getSaveStatusIcon()}
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <label className="inline-flex items-center space-x-2 text-xs font-medium text-gray-700">
+              <input
+                type="checkbox"
+                checked={isStickyEnabled}
+                onChange={(e) => handleStickyHeaderToggle(e.target.checked)}
+                disabled={isSavingStickyPreference}
+                className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500 disabled:opacity-50"
+                aria-label="Freeze Header"
+              />
+              <span>Freeze Header</span>
+            </label>
+
+            {/* Password Settings */}
+            <button
+              onClick={() => setPasswordSettingsOpen(true)}
+              className="px-3 py-1 text-xs font-medium bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors"
+              title="Password Settings"
+            >
+              <svg className="w-3 h-3 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+              Settings
+            </button>
+
+            {/* Edit Mode Indicator */}
+            {editMode && (
+              <div className="flex items-center space-x-1 text-purple-600">
+                <div className="w-2 h-2 bg-purple-600 rounded-full animate-pulse"></div>
+                <span className="text-xs font-medium">Edit Mode</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Lead Table */}
+      <LeadTable
+        filters={filters}
+        {...(onLeadClick && { onLeadClick })}
+        selectedLeads={selectedLeads}
+        {...(onLeadSelection && { onLeadSelection })}
+        selectAll={selectAll}
+        {...(onSelectAll && { onSelectAll })}
+        {...(customLeads && { leads: customLeads })}
+        showActions={showActions}
+        {...(actionButtons && { actionButtons })}
+        emptyMessage={emptyMessage}
+        editable={editable && editMode}
+        onCellUpdate={handleCellUpdate}
+        validationErrors={validationErrors}
+        headerEditable={headerEditable && headerEditMode}
+        {...(onColumnAdded && { onColumnAdded })}
+        {...(onColumnDeleted && { onColumnDeleted })}
+        {...(onColumnReorder && { onColumnReorder })}
+        highlightedLeadId={highlightedLeadId}
+        stickyHeaderEnabled={isStickyEnabled}
+        {...(roleFilter && { roleFilter })}
+      />
+
+      {/* Keyboard Shortcuts Help */}
+      {editMode && (
+        <div className="absolute bottom-4 right-4 bg-gray-800 text-white text-xs p-2 rounded shadow-lg">
+          <div className="font-medium mb-1">Keyboard Shortcuts:</div>
+          <div>Ctrl+Z: Undo</div>
+          <div>Ctrl+Shift+Z: Redo</div>
+          {headerEditable && <div>Ctrl+H: Toggle header edit</div>}
+          <div>Ctrl+Shift+C: Column management</div>
+          <div>Ctrl+Shift+R: Row management</div>
+          <div>Enter: Save cell</div>
+          <div>Escape: Cancel edit</div>
+        </div>
+      )}
+
+      {/* Modals */}
+      <PasswordModal
+        isOpen={passwordModalOpen}
+        onClose={() => {
+          setPasswordModalOpen(false);
+          setPendingOperation(null);
+        }}
+        operation={pendingOperation as any || 'editMode'}
+        onSuccess={handlePasswordSuccess}
+      />
+
+      <PasswordSettingsModal
+        isOpen={passwordSettingsOpen}
+        onClose={() => setPasswordSettingsOpen(false)}
+        onPasswordChanged={() => {
+          // Refresh verification status
+          setVerifiedOperations(new Set());
+        }}
+      />
+
+      <ColumnManagementModal
+        isOpen={columnManagementOpen}
+        onClose={() => setColumnManagementOpen(false)}
+        onColumnAdded={(column) => {
+          onColumnAdded?.(column);
+          setColumnManagementOpen(false);
+        }}
+        onColumnDeleted={(fieldKey) => {
+          onColumnDeleted?.(fieldKey);
+          setColumnManagementOpen(false);
+        }}
+      />
+
+      <RowManagementModal
+        isOpen={rowManagementOpen}
+        onClose={() => setRowManagementOpen(false)}
+        onRowsAdded={(count) => {
+          onRowsAdded?.(count);
+          setRowManagementOpen(false);
+        }}
+        onRowsDeleted={(count) => {
+          onRowsDeleted?.(count);
+          setRowManagementOpen(false);
+        }}
+      />
+    </div>
+  );
+};
+
+export default EditableTable;

@@ -1,0 +1,909 @@
+'use client';
+
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import dynamic from 'next/dynamic';
+import { useUsers } from '../context/UserContext';
+import { useImpersonation } from '../context/ImpersonationContext';
+import { RoleGuard, AccessDenied } from '../components/RoleGuard';
+import { User, UserRole, PasswordHistoryEntry } from '../types/processTypes';
+import { RolePreset, ALL_PERMISSION_KEYS, PERMISSION_CATEGORIES, PERMISSION_LABELS, BASE_ROLE_DEFAULTS } from '../utils/permissions';
+import type { PermissionKey } from '../utils/permissions';
+
+// Dynamically imported components for bundle optimization
+const AuditLogViewer = dynamic(() => import('../components/AuditLogViewer'), {
+    loading: () => <div className="flex items-center justify-center p-8"><div className="text-gray-500">Loading audit logs...</div></div>,
+    ssr: false
+});
+
+const PasswordHistoryModal = dynamic(() => import('../components/PasswordHistoryModal'), {
+    loading: () => <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"><div className="bg-white rounded-xl p-6"><div className="text-gray-500">Loading...</div></div></div>,
+    ssr: false
+});
+
+const PresetBuilderModal = dynamic(() => import('../components/PresetBuilderModal'), {
+    loading: () => null,
+    ssr: false
+});
+
+export default function UsersPage() {
+    const {
+        users, createUser, updateUser, deleteUser, resetUserPassword, currentUser,
+        getPresets, createPreset, updatePreset, deletePreset, duplicatePreset,
+    } = useUsers();
+    const { startImpersonation } = useImpersonation();
+
+    const [activeTab, setActiveTab] = useState<'users' | 'presets' | 'audit'>('users');
+    const [isEditing, setIsEditing] = useState(false);
+    const [editingUser, setEditingUser] = useState<Partial<User>>({});
+    const [error, setError] = useState('');
+    const [success, setSuccess] = useState('');
+
+    // 2-step user creation
+    const [createStep, setCreateStep] = useState<1 | 2>(1);
+    const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
+    const [customPermissions, setCustomPermissions] = useState<Record<PermissionKey, boolean>>(
+        { ...BASE_ROLE_DEFAULTS['SALES_EXECUTIVE'] }
+    );
+
+    // Presets state
+    const [presets, setPresets] = useState<RolePreset[]>([]);
+    const [presetsLoading, setPresetsLoading] = useState(false);
+    const [presetModalOpen, setPresetModalOpen] = useState(false);
+    const [editingPreset, setEditingPreset] = useState<RolePreset | null>(null);
+
+    const [resetPasswordModal, setResetPasswordModal] = useState<{ isOpen: boolean; userId: string; userName: string; newPassword: string | null }>(
+        { isOpen: false, userId: '', userName: '', newPassword: null }
+    );
+
+    const [historyModal, setHistoryModal] = useState<{ isOpen: boolean; userId: string; userName: string; history: PasswordHistoryEntry[] }>({
+        isOpen: false, userId: '', userName: '', history: []
+    });
+
+    // Load presets when tab changes to presets (or on mount for user creation)
+    const loadPresets = useCallback(async () => {
+        setPresetsLoading(true);
+        try {
+            const fetched = await getPresets();
+            setPresets(fetched);
+        } catch {
+            console.error('Failed to load presets');
+        } finally {
+            setPresetsLoading(false);
+        }
+    }, [getPresets]);
+
+    useEffect(() => {
+        loadPresets();
+    }, [loadPresets]);
+
+    // Handle impersonation start using context
+    const handleStartImpersonation = useCallback(async (user: User) => {
+        const result = await startImpersonation(user.userId);
+
+        if (result.success) {
+            setSuccess(result.message);
+            setTimeout(() => window.location.href = '/', 500);
+        } else {
+            setError(result.message);
+            setTimeout(() => setError(''), 3000);
+        }
+    }, [startImpersonation]);
+
+    const resetForm = useCallback(() => {
+        setEditingUser({});
+        setIsEditing(false);
+        setCreateStep(1);
+        setSelectedPresetId(null);
+        setCustomPermissions({ ...BASE_ROLE_DEFAULTS['SALES_EXECUTIVE'] });
+        setError('');
+        setSuccess('');
+    }, []);
+
+    // When role changes in step 1, reset permissions to that role's defaults
+    const handleRoleChange = useCallback((role: UserRole) => {
+        setEditingUser(prev => ({ ...prev, role }));
+        setCustomPermissions({ ...BASE_ROLE_DEFAULTS[role] });
+        setSelectedPresetId(null);
+    }, []);
+
+    // When a preset is selected in step 2, apply its permissions
+    const handlePresetSelect = useCallback((presetId: string | null) => {
+        setSelectedPresetId(presetId);
+        if (presetId) {
+            const preset = presets.find(p => p.id === presetId);
+            if (preset) {
+                try {
+                    const parsed = JSON.parse(preset.permissions) as Record<PermissionKey, boolean>;
+                    setCustomPermissions(prev => ({ ...prev, ...parsed }));
+                } catch { /* ignore */ }
+            }
+        } else {
+            // Reset to role defaults
+            const role = (editingUser.role || 'SALES_EXECUTIVE') as UserRole;
+            setCustomPermissions({ ...BASE_ROLE_DEFAULTS[role] });
+        }
+    }, [presets, editingUser.role]);
+
+    const handleCreate = useCallback(async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!editingUser.username || !editingUser.password || !editingUser.name || !editingUser.email || !editingUser.role) {
+            setError('All fields are required');
+            return;
+        }
+
+        // Compute custom permissions diff (only keys that differ from base defaults or preset)
+        const role = editingUser.role as UserRole;
+        const basePerms = selectedPresetId
+            ? (() => {
+                const preset = presets.find(p => p.id === selectedPresetId);
+                if (preset) {
+                    try {
+                        return { ...BASE_ROLE_DEFAULTS[role], ...JSON.parse(preset.permissions) } as Record<PermissionKey, boolean>;
+                    } catch { return BASE_ROLE_DEFAULTS[role]; }
+                }
+                return BASE_ROLE_DEFAULTS[role];
+            })()
+            : BASE_ROLE_DEFAULTS[role];
+
+        const diff: Partial<Record<PermissionKey, boolean>> = {};
+        for (const key of ALL_PERMISSION_KEYS) {
+            if (customPermissions[key] !== basePerms[key]) {
+                diff[key] = customPermissions[key];
+            }
+        }
+        const hasCustom = Object.keys(diff).length > 0;
+
+        const result = await createUser({
+            username: editingUser.username,
+            password: editingUser.password,
+            name: editingUser.name,
+            email: editingUser.email,
+            role: editingUser.role as UserRole,
+            isActive: true,
+            rolePresetId: selectedPresetId,
+            customPermissions: hasCustom ? JSON.stringify(diff) : null,
+        });
+
+        if (result.success) {
+            setSuccess(result.message);
+            setTimeout(() => {
+                resetForm();
+            }, 2000);
+        } else {
+            setError(result.message);
+        }
+    }, [editingUser, createUser, selectedPresetId, customPermissions, presets, resetForm]);
+
+    const handleDelete = useCallback(async (userId: string) => {
+        if (confirm('Are you sure you want to delete this user?')) {
+            const result = await deleteUser(userId);
+            if (result.success) {
+                setSuccess(result.message);
+                setTimeout(() => setSuccess(''), 3000);
+            } else {
+                setError(result.message);
+            }
+        }
+    }, [deleteUser]);
+
+    const handleResetPassword = useCallback(async (userId: string, userName: string) => {
+        if (confirm(`Are you sure you want to reset the password for ${userName}? This will generate a new random password.`)) {
+            const result = await resetUserPassword(userId);
+            if (result.success && result.newPassword) {
+                setResetPasswordModal({
+                    isOpen: true,
+                    userId,
+                    userName,
+                    newPassword: result.newPassword
+                });
+            } else {
+                setError(result.message);
+                setTimeout(() => setError(''), 3000);
+            }
+        }
+    }, [resetUserPassword]);
+
+    const copyToClipboard = useCallback((text: string) => {
+        navigator.clipboard.writeText(text).then(() => {
+            setSuccess('Password copied to clipboard!');
+            setTimeout(() => setSuccess(''), 2000);
+        });
+    }, []);
+
+    const handleViewHistory = useCallback((user: User) => {
+        setHistoryModal({
+            isOpen: true,
+            userId: user.userId,
+            userName: user.name,
+            history: user.passwordHistory || []
+        });
+    }, []);
+
+    const closePasswordModal = useCallback(() => {
+        setResetPasswordModal({ isOpen: false, userId: '', userName: '', newPassword: null });
+    }, []);
+
+    // Preset actions
+    const handleDeletePreset = useCallback(async (preset: RolePreset) => {
+        const usersUsingPreset = users.filter(u => u.rolePresetId === preset.id);
+        const warning = usersUsingPreset.length > 0
+            ? `This preset is used by ${usersUsingPreset.length} user(s). They will revert to role defaults. Continue?`
+            : 'Are you sure you want to delete this preset?';
+        if (confirm(warning)) {
+            const result = await deletePreset(preset.id);
+            if (result.success) {
+                setSuccess(result.message);
+                loadPresets();
+                setTimeout(() => setSuccess(''), 3000);
+            } else {
+                setError(result.message);
+                setTimeout(() => setError(''), 3000);
+            }
+        }
+    }, [deletePreset, loadPresets, users]);
+
+    const handleDuplicatePreset = useCallback(async (preset: RolePreset) => {
+        const result = await duplicatePreset(preset.id);
+        if (result.success) {
+            setSuccess(result.message);
+            loadPresets();
+            setTimeout(() => setSuccess(''), 3000);
+        } else {
+            setError(result.message);
+            setTimeout(() => setError(''), 3000);
+        }
+    }, [duplicatePreset, loadPresets]);
+
+    // Virtualization & pagination
+    const VIRTUALIZATION_THRESHOLD = 50;
+    const shouldVirtualize = users.length > VIRTUALIZATION_THRESHOLD;
+    const [userPage, setUserPage] = useState(1);
+    const usersPerPage = 25;
+    const totalUserPages = Math.ceil(users.length / usersPerPage);
+
+    const paginatedUsers = useMemo(() => {
+        const startIndex = (userPage - 1) * usersPerPage;
+        return users.slice(startIndex, startIndex + usersPerPage);
+    }, [users, userPage, usersPerPage]);
+
+    const memoizedUsers = useMemo(() => users, [users]);
+
+    // Preset name lookup for users table
+    const presetNameMap = useMemo(() => {
+        const map: Record<string, string> = {};
+        presets.forEach(p => { map[p.id] = p.name; });
+        return map;
+    }, [presets]);
+
+    // Auto-dismiss password modal after 10 seconds
+    useEffect(() => {
+        if (resetPasswordModal.isOpen && resetPasswordModal.newPassword) {
+            const timer = setTimeout(() => {
+                closePasswordModal();
+            }, 10000);
+            return () => clearTimeout(timer);
+        }
+    }, [resetPasswordModal.isOpen, resetPasswordModal.newPassword, closePasswordModal]);
+
+    return (
+        <RoleGuard allowedRoles={['ADMIN']} fallback={<AccessDenied />}>
+            <div className="p-6 w-full max-w-[98%] xl:max-w-[1920px] mx-auto">
+                <div className="flex justify-between items-center mb-6">
+                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">User Management</h1>
+                    {activeTab === 'users' && (
+                        <button
+                            onClick={() => {
+                                resetForm();
+                                setIsEditing(true);
+                            }}
+                            className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
+                        >
+                            Add New User
+                        </button>
+                    )}
+                </div>
+
+                {/* Tabs */}
+                <div className="flex border-b border-gray-200 mb-6">
+                    <button
+                        onClick={() => setActiveTab('users')}
+                        className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${activeTab === 'users'
+                            ? 'border-purple-600 text-purple-600'
+                            : 'border-transparent text-gray-500 hover:text-gray-700'
+                            }`}
+                    >
+                        Users
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('presets')}
+                        className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${activeTab === 'presets'
+                            ? 'border-purple-600 text-purple-600'
+                            : 'border-transparent text-gray-500 hover:text-gray-700'
+                            }`}
+                    >
+                        Roles & Presets
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('audit')}
+                        className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${activeTab === 'audit'
+                            ? 'border-purple-600 text-purple-600'
+                            : 'border-transparent text-gray-500 hover:text-gray-700'
+                            }`}
+                    >
+                        Audit Logs
+                    </button>
+                </div>
+
+                {/* Messages */}
+                {error && (
+                    <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+                        {error}
+                    </div>
+                )}
+                {success && (
+                    <div className="mb-4 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg">
+                        {success}
+                    </div>
+                )}
+
+                {/* ====================================================================== */}
+                {/* AUDIT TAB */}
+                {/* ====================================================================== */}
+                {activeTab === 'audit' && <AuditLogViewer />}
+
+                {/* ====================================================================== */}
+                {/* PRESETS TAB */}
+                {/* ====================================================================== */}
+                {activeTab === 'presets' && (
+                    <div>
+                        <div className="flex items-center justify-between mb-6">
+                            <div>
+                                <h2 className="text-lg font-semibold text-gray-900">Permission Presets</h2>
+                                <p className="text-sm text-gray-500 mt-1">Create and manage reusable permission configurations for users</p>
+                            </div>
+                            <button
+                                onClick={() => {
+                                    setEditingPreset(null);
+                                    setPresetModalOpen(true);
+                                }}
+                                className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors inline-flex items-center gap-2"
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                </svg>
+                                Create Preset
+                            </button>
+                        </div>
+
+                        {presetsLoading ? (
+                            <div className="flex items-center justify-center p-12">
+                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+                            </div>
+                        ) : presets.length === 0 ? (
+                            <div className="text-center py-12 bg-gray-50 rounded-xl border border-dashed border-gray-300">
+                                <p className="text-gray-500">No presets found. Create your first preset to get started.</p>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                                {presets.map(preset => {
+                                    let permEntries: [string, boolean][] = [];
+                                    try {
+                                        permEntries = Object.entries(JSON.parse(preset.permissions)) as [string, boolean][];
+                                    } catch { /* ignore */ }
+                                    const enabledKeys = permEntries.filter(([, v]) => v).map(([k]) => k);
+                                    const disabledKeys = permEntries.filter(([, v]) => !v).map(([k]) => k);
+                                    const usersUsingPreset = users.filter(u => u.rolePresetId === preset.id);
+
+                                    return (
+                                        <div key={preset.id} className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
+                                            <div className="flex items-start justify-between mb-3">
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center gap-2">
+                                                        <h3 className="text-sm font-bold text-gray-900 truncate">{preset.name}</h3>
+                                                        {preset.isSystem && (
+                                                            <span className="flex-shrink-0 px-1.5 py-0.5 text-[10px] font-semibold bg-blue-100 text-blue-700 rounded">SYSTEM</span>
+                                                        )}
+                                                        {(preset.userCount ?? 0) > 0 && (
+                                                            <span className="flex-shrink-0 px-1.5 py-0.5 text-[10px] font-semibold bg-purple-100 text-purple-700 rounded">
+                                                                {preset.userCount} user{(preset.userCount ?? 0) > 1 ? 's' : ''}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    {preset.description && (
+                                                        <p className="text-xs text-gray-500 mt-1 line-clamp-2">{preset.description}</p>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            {/* Permission pills */}
+                                            <div className="flex flex-wrap gap-1 mb-3">
+                                                {enabledKeys.slice(0, 6).map(k => (
+                                                    <span key={k} className="px-1.5 py-0.5 text-[10px] font-medium bg-green-50 text-green-700 rounded border border-green-200">
+                                                        {PERMISSION_LABELS[k as PermissionKey] || k}
+                                                    </span>
+                                                ))}
+                                                {enabledKeys.length > 6 && (
+                                                    <span className="px-1.5 py-0.5 text-[10px] font-medium bg-gray-100 text-gray-600 rounded">
+                                                        +{enabledKeys.length - 6} more
+                                                    </span>
+                                                )}
+                                            </div>
+
+                                            {/* Applied to users */}
+                                            {usersUsingPreset.length > 0 && (
+                                                <p className="text-xs text-gray-400 mb-3">
+                                                    Applied to: {usersUsingPreset.map(u => u.name).slice(0, 3).join(', ')}
+                                                    {usersUsingPreset.length > 3 && ` +${usersUsingPreset.length - 3} more`}
+                                                </p>
+                                            )}
+
+                                            {/* Actions */}
+                                            <div className="flex items-center gap-2 pt-3 border-t border-gray-100">
+                                                {!preset.isSystem && (
+                                                    <button
+                                                        onClick={() => {
+                                                            setEditingPreset(preset);
+                                                            setPresetModalOpen(true);
+                                                        }}
+                                                        className="text-xs px-2.5 py-1.5 text-purple-600 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors"
+                                                    >
+                                                        Edit
+                                                    </button>
+                                                )}
+                                                <button
+                                                    onClick={() => handleDuplicatePreset(preset)}
+                                                    className="text-xs px-2.5 py-1.5 text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
+                                                >
+                                                    Duplicate
+                                                </button>
+                                                {!preset.isSystem && (
+                                                    <button
+                                                        onClick={() => handleDeletePreset(preset)}
+                                                        className="text-xs px-2.5 py-1.5 text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors"
+                                                    >
+                                                        Delete
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+
+                        {/* Preset Builder Modal */}
+                        <PresetBuilderModal
+                            isOpen={presetModalOpen}
+                            onClose={() => {
+                                setPresetModalOpen(false);
+                                setEditingPreset(null);
+                            }}
+                            preset={editingPreset}
+                            onSave={() => loadPresets()}
+                            createPreset={createPreset}
+                            updatePreset={updatePreset}
+                        />
+                    </div>
+                )}
+
+                {/* ====================================================================== */}
+                {/* USERS TAB */}
+                {/* ====================================================================== */}
+                {activeTab === 'users' && (
+                    <>
+                        {/* Add User Form (2-step) */}
+                        {isEditing && (
+                            <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm mb-6">
+                                <div className="flex items-center justify-between mb-4">
+                                    <h2 className="text-lg font-semibold text-gray-900">
+                                        Create New User — Step {createStep} of 2
+                                    </h2>
+                                    <div className="flex items-center gap-2">
+                                        <div className={`w-3 h-3 rounded-full ${createStep >= 1 ? 'bg-purple-600' : 'bg-gray-300'}`} />
+                                        <div className={`w-8 h-0.5 ${createStep >= 2 ? 'bg-purple-600' : 'bg-gray-300'}`} />
+                                        <div className={`w-3 h-3 rounded-full ${createStep >= 2 ? 'bg-purple-600' : 'bg-gray-300'}`} />
+                                    </div>
+                                </div>
+
+                                {createStep === 1 ? (
+                                    /* Step 1: Basic Info */
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                                            <input
+                                                type="text"
+                                                value={editingUser.name || ''}
+                                                onChange={e => setEditingUser({ ...editingUser, name: e.target.value })}
+                                                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 text-black placeholder:text-black"
+                                                placeholder="Full Name"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
+                                            <input
+                                                type="text"
+                                                value={editingUser.username || ''}
+                                                onChange={e => setEditingUser({ ...editingUser, username: e.target.value })}
+                                                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 text-black placeholder:text-black"
+                                                placeholder="username"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                                            <input
+                                                type="email"
+                                                value={editingUser.email || ''}
+                                                onChange={e => setEditingUser({ ...editingUser, email: e.target.value })}
+                                                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 text-black placeholder:text-black"
+                                                placeholder="email@example.com"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
+                                            <select
+                                                value={editingUser.role || ''}
+                                                onChange={e => handleRoleChange(e.target.value as UserRole)}
+                                                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 bg-white text-black"
+                                            >
+                                                <option value="">Select Role</option>
+                                                <option value="SALES_EXECUTIVE">Sales Executive</option>
+                                                <option value="SALES_MANAGER">Sales Manager</option>
+                                                <option value="PROCESS_EXECUTIVE">Process Executive</option>
+                                                <option value="PROCESS_MANAGER">Process Manager</option>
+                                                <option value="ADMIN">Admin</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                                            <input
+                                                type="password"
+                                                value={editingUser.password || ''}
+                                                onChange={e => setEditingUser({ ...editingUser, password: e.target.value })}
+                                                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 text-black placeholder:text-black"
+                                                placeholder="Password"
+                                            />
+                                        </div>
+
+                                        <div className="md:col-span-2 flex justify-end gap-3 mt-4">
+                                            <button
+                                                type="button"
+                                                onClick={() => setIsEditing(false)}
+                                                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+                                            >
+                                                Cancel
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    if (!editingUser.username || !editingUser.password || !editingUser.name || !editingUser.email || !editingUser.role) {
+                                                        setError('All fields are required');
+                                                        return;
+                                                    }
+                                                    setError('');
+                                                    setCreateStep(2);
+                                                }}
+                                                className="px-6 py-2 text-white bg-purple-600 rounded-lg hover:bg-purple-700 inline-flex items-center gap-1"
+                                            >
+                                                Next →
+                                            </button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    /* Step 2: Permissions */
+                                    <form onSubmit={handleCreate}>
+                                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-5">
+                                            <p className="text-sm text-blue-700">
+                                                Base role <strong className="font-semibold">{(editingUser.role || 'SALES_EXECUTIVE').replace(/_/g, ' ')}</strong> defaults are pre-loaded.
+                                                You can optionally select a preset or fine-tune individual permissions.
+                                            </p>
+                                        </div>
+
+                                        {/* Preset selector */}
+                                        <div className="mb-5">
+                                            <h3 className="text-sm font-semibold text-gray-800 mb-3">Select a Preset (optional)</h3>
+                                            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handlePresetSelect(null)}
+                                                    className={`p-3 rounded-lg border text-left text-sm transition-all ${selectedPresetId === null
+                                                            ? 'border-purple-500 bg-purple-50 ring-2 ring-purple-200'
+                                                            : 'border-gray-200 hover:border-gray-300'
+                                                        }`}
+                                                >
+                                                    <div className="font-medium text-gray-900">No Preset</div>
+                                                    <div className="text-xs text-gray-500 mt-0.5">Use role defaults</div>
+                                                </button>
+                                                {presets.map(p => (
+                                                    <button
+                                                        key={p.id}
+                                                        type="button"
+                                                        onClick={() => handlePresetSelect(p.id)}
+                                                        className={`p-3 rounded-lg border text-left text-sm transition-all ${selectedPresetId === p.id
+                                                                ? 'border-purple-500 bg-purple-50 ring-2 ring-purple-200'
+                                                                : 'border-gray-200 hover:border-gray-300'
+                                                            }`}
+                                                    >
+                                                        <div className="font-medium text-gray-900 truncate">{p.name}</div>
+                                                        {p.description && (
+                                                            <div className="text-xs text-gray-500 mt-0.5 truncate">{p.description}</div>
+                                                        )}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        {/* Divider */}
+                                        <div className="flex items-center gap-3 my-5">
+                                            <div className="flex-1 h-px bg-gray-200" />
+                                            <span className="text-xs text-gray-400 font-medium">or fine-tune individual permissions</span>
+                                            <div className="flex-1 h-px bg-gray-200" />
+                                        </div>
+
+                                        {/* Per-key toggles */}
+                                        <div className="space-y-4 mb-5">
+                                            {PERMISSION_CATEGORIES.map(category => (
+                                                <div key={category.label}>
+                                                    <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                                                        {category.label}
+                                                    </h4>
+                                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                                                        {category.keys.map(key => (
+                                                            <label
+                                                                key={key}
+                                                                className={`flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer text-sm transition-all ${customPermissions[key]
+                                                                        ? 'bg-green-50 border border-green-200 text-green-800'
+                                                                        : 'bg-white border border-gray-200 text-gray-600 hover:border-gray-300'
+                                                                    }`}
+                                                            >
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={customPermissions[key]}
+                                                                    onChange={() => setCustomPermissions(prev => ({
+                                                                        ...prev,
+                                                                        [key]: !prev[key],
+                                                                    }))}
+                                                                    className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                                                                />
+                                                                {PERMISSION_LABELS[key]}
+                                                            </label>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+
+                                        <div className="flex justify-end gap-3 mt-4">
+                                            <button
+                                                type="button"
+                                                onClick={() => setCreateStep(1)}
+                                                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 inline-flex items-center gap-1"
+                                            >
+                                                ← Back
+                                            </button>
+                                            <button
+                                                type="submit"
+                                                className="px-6 py-2 text-white bg-purple-600 rounded-lg hover:bg-purple-700"
+                                            >
+                                                Create User →
+                                            </button>
+                                        </div>
+                                    </form>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Users List */}
+                        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                            <table className="min-w-full divide-y divide-gray-200">
+                                <thead className="bg-gray-50">
+                                    <tr>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Username</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Password</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Permissions</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Login</th>
+                                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="bg-white divide-y divide-gray-200">
+                                    {/* Paginated user rendering for better performance when >50 users */}
+                                    {shouldVirtualize && (
+                                        <tr>
+                                            <td colSpan={8} className="px-6 py-2 bg-blue-50 text-blue-700 text-sm text-center">
+                                                ⚡ Pagination enabled for {users.length} users - Showing {Math.min(usersPerPage, paginatedUsers.length)} per page
+                                            </td>
+                                        </tr>
+                                    )}
+                                    {(shouldVirtualize ? paginatedUsers : memoizedUsers).map(user => (
+                                        <tr key={user.userId}>
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <div className="flex items-center">
+                                                    <div className="flex-shrink-0 h-10 w-10 bg-purple-100 rounded-full flex items-center justify-center text-purple-600 font-bold">
+                                                        {user.name.charAt(0).toUpperCase()}
+                                                    </div>
+                                                    <div className="ml-4">
+                                                        <div className="text-sm font-medium text-gray-900">{user.name}</div>
+                                                        <div className="text-sm text-gray-500">{user.email}</div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <span className="text-sm text-gray-900 font-mono">{user.username}</span>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                {user.plainPassword ? (
+                                                    <div className="flex items-center gap-2 min-w-0">
+                                                        <span className="text-sm text-gray-900 font-mono min-w-0 inline-block max-w-[200px] truncate" title={user.plainPassword}>{user.plainPassword}</span>
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-sm text-gray-400 font-mono min-w-0 inline-block max-w-[200px] truncate" title="Password not yet available (user created before this feature)">
+                                                        ••••••••
+                                                    </span>
+                                                )}
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <span className={`px-2 py-1 text-xs font-semibold rounded-full ${user.role === 'ADMIN' ? 'bg-red-100 text-red-800' :
+                                                    user.role === 'PROCESS_MANAGER' ? 'bg-indigo-100 text-indigo-800' :
+                                                        user.role === 'PROCESS_EXECUTIVE' ? 'bg-blue-100 text-blue-800' :
+                                                            user.role === 'SALES_MANAGER' ? 'bg-purple-100 text-purple-800' :
+                                                                'bg-green-100 text-green-800'
+                                                    }`}>
+                                                    {user.role.replace(/_/g, ' ')}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                {user.rolePresetId && presetNameMap[user.rolePresetId] ? (
+                                                    <span className="px-2 py-1 text-xs font-medium bg-indigo-50 text-indigo-700 rounded-full border border-indigo-200">
+                                                        {presetNameMap[user.rolePresetId]}
+                                                    </span>
+                                                ) : (
+                                                    <span className="px-2 py-1 text-xs font-medium bg-gray-50 text-gray-500 rounded-full border border-gray-200">
+                                                        Role Defaults
+                                                    </span>
+                                                )}
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <span className={`px-2 py-1 text-xs font-semibold rounded-full ${user.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                                                    }`}>
+                                                    {user.isActive ? 'Active' : 'Inactive'}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                {user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleString() : 'Never'}
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                                <div className="flex justify-end items-center gap-3">
+                                                    {user.userId !== 'admin-001' && user.userId !== currentUser?.userId && (
+                                                        <>
+                                                            {user.role !== 'ADMIN' && user.isActive && (
+                                                                <button
+                                                                    onClick={() => handleStartImpersonation(user)}
+                                                                    className="text-indigo-600 hover:text-indigo-900 inline-flex items-center gap-1"
+                                                                    title={`View as ${user.name}`}
+                                                                >
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                                    </svg>
+                                                                    View As
+                                                                </button>
+                                                            )}
+                                                            <button
+                                                                onClick={() => handleResetPassword(user.userId, user.name)}
+                                                                className="text-amber-600 hover:text-amber-900"
+                                                            >
+                                                                Reset PW
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleDelete(user.userId)}
+                                                                className="text-red-600 hover:text-red-900"
+                                                            >
+                                                                Delete
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleViewHistory(user)}
+                                                                className="text-blue-600 hover:text-blue-900"
+                                                            >
+                                                                History
+                                                            </button>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+
+                            {/* Pagination Controls for large user lists */}
+                            {shouldVirtualize && totalUserPages > 1 && (
+                                <div className="flex items-center justify-center gap-2 py-4 bg-gray-50 border-t">
+                                    <button
+                                        onClick={() => setUserPage(1)}
+                                        disabled={userPage === 1}
+                                        className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        First
+                                    </button>
+                                    <button
+                                        onClick={() => setUserPage(p => Math.max(1, p - 1))}
+                                        disabled={userPage === 1}
+                                        className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        Previous
+                                    </button>
+                                    <span className="px-4 py-1 text-sm text-gray-700">
+                                        Page {userPage} of {totalUserPages}
+                                    </span>
+                                    <button
+                                        onClick={() => setUserPage(p => Math.min(totalUserPages, p + 1))}
+                                        disabled={userPage === totalUserPages}
+                                        className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        Next
+                                    </button>
+                                    <button
+                                        onClick={() => setUserPage(totalUserPages)}
+                                        disabled={userPage === totalUserPages}
+                                        className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        Last
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Password Reset Modal */}
+                        {resetPasswordModal.isOpen && resetPasswordModal.newPassword && (
+                            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                                <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4 shadow-xl">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <h3 className="text-lg font-semibold text-gray-900">Password Reset Successful</h3>
+                                        <button
+                                            onClick={closePasswordModal}
+                                            className="text-gray-400 hover:text-gray-600"
+                                        >
+                                            ✕
+                                        </button>
+                                    </div>
+                                    <p className="text-sm text-gray-600 mb-4">
+                                        New password for <strong>{resetPasswordModal.userName}</strong>:
+                                    </p>
+                                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 flex items-center justify-between mb-4">
+                                        <code className="text-lg font-mono text-gray-900 select-all">
+                                            {resetPasswordModal.newPassword}
+                                        </code>
+                                        <button
+                                            onClick={() => copyToClipboard(resetPasswordModal.newPassword!)}
+                                            className="ml-3 px-3 py-1 bg-purple-600 text-white text-sm rounded hover:bg-purple-700 transition-colors"
+                                        >
+                                            Copy
+                                        </button>
+                                    </div>
+                                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
+                                        <p className="text-sm text-amber-800">
+                                            ⚠️ Please share this password with the user securely. They should change it after logging in.
+                                        </p>
+                                    </div>
+                                    <p className="text-xs text-gray-400 text-center">
+                                        This dialog will auto-close in 10 seconds
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Password History Modal */}
+                        <PasswordHistoryModal
+                            isOpen={historyModal.isOpen}
+                            onClose={() => setHistoryModal({ ...historyModal, isOpen: false })}
+                            userName={historyModal.userName}
+                            history={historyModal.history}
+                        />
+                    </>
+                )}
+            </div>
+        </RoleGuard>
+    );
+}

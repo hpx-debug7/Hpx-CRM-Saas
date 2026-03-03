@@ -1,0 +1,415 @@
+@import "tailwindcss";
+
+/* Critical CSS moved to layout.tsx */
+
+/* =============================================================================
+   ACCESSIBILITY - Reduced Motion Support
+   ============================================================================= */
+
+/* =============================================================================
+   ACCESSIBILITY - Reduced Motion Support
+   ============================================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .card-3d {
+    transform: none !important;
+  }
+
+  .cursor-blob {
+    display: none !important;
+  }
+}
+
+/* =============================================================================
+   TARGETED TRANSITION UTILITIES - Performance-optimized alternatives to * selector
+   ============================================================================= */
+
+.transition-colors {
+  transition: background-color var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.transition-transform {
+  transition: transform var(--transition-fast);
+}
+
+.transition-all-fast {
+  transition: all var(--transition-fast);
+}
+
+.transition-all-normal {
+  transition: all var(--transition-normal);
+}
+
+/* =============================================================================
+   VIRTUAL LIST STYLES
+   ============================================================================= */
+
+.virtual-list-container {
+  height: var(--container-height);
+}
+
+.virtual-list-total {
+  height: var(--total-height);
+  position: relative;
+}
+
+.virtual-list-items {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  transform: translateY(var(--offset-y));
+}
+
+.virtual-list-item {
+  height: var(--item-height);
+}
+
+/* =============================================================================
+   FORM INPUT STYLES
+   ============================================================================= */
+
+.input {
+  width: 100%;
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+.input:focus {
+  outline: none;
+  border-color: #8b5cf6;
+  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.2);
+}
+
+/* Placeholder styling */
+.input::placeholder {
+  color: #000000;
+  opacity: 1;
+}
+
+.input::-webkit-input-placeholder {
+  color: #000000;
+}
+
+.input::-moz-placeholder {
+  color: #000000;
+  opacity: 1;
+}
+
+.input:-ms-input-placeholder {
+  color: #000000;
+}
+
+/* Gujarati text support */
+.gujarati-text {
+  font-family: var(--font-gujarati), 'Noto Sans Gujarati', var(--font-sans), system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  font-feature-settings: "liga" 1, "kern" 1;
+  text-rendering: optimizeLegibility;
+}
+
+/* Ensure proper Unicode support for all text inputs */
+input,
+textarea,
+select {
+  font-family: var(--font-sans), 'Noto Sans Gujarati', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* Global black placeholder styling for all form elements */
+input::placeholder,
+textarea::placeholder {
+  color: #000000 !important;
+  opacity: 1 !important;
+}
+
+input::-webkit-input-placeholder,
+textarea::-webkit-input-placeholder {
+  color: #000000 !important;
+}
+
+input::-moz-placeholder,
+textarea::-moz-placeholder {
+  color: #000000 !important;
+  opacity: 1 !important;
+}
+
+input:-ms-input-placeholder,
+textarea:-ms-input-placeholder {
+  color: #000000 !important;
+}
+
+/* =============================================================================
+   CARD HOVER EFFECTS
+   ============================================================================= */
+
+.card-hover {
+  transition: transform var(--transition-normal), box-shadow var(--transition-normal);
+}
+
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--card-shadow);
+}
+
+/* =============================================================================
+   ANIMATIONS - Optimized keyframes
+   ============================================================================= */
+
+@keyframes pulse {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes ping {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+
+  75%,
+  100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+@keyframes gradient-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-ping {
+  animation: ping 1s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+.animate-gradient-x {
+  background-size: 200% 200%;
+  animation: gradient-shift 3s ease infinite;
+}
+
+.animation-delay-1000 {
+  animation-delay: 1s;
+}
+
+.animation-delay-2000 {
+  animation-delay: 2s;
+}
+
+.animation-delay-3000 {
+  animation-delay: 3s;
+}
+
+.animation-delay-4000 {
+  animation-delay: 4s;
+}
+
+/* =============================================================================
+   GLASS MORPHISM & GRADIENT EFFECTS - Optimized
+   ============================================================================= */
+
+.backdrop-blur-sm {
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+}
+
+.bg-clip-text {
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+.hover\:bg-white\/10:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* =============================================================================
+   RESPONSIVE DESIGN
+   ============================================================================= */
+
+@media (max-width: 768px) {
+  .text-6xl {
+    font-size: 3rem;
+  }
+
+  .text-8xl {
+    font-size: 4rem;
+  }
+}
+
+/* =============================================================================
+   PREMIUM 3D CARD ANIMATIONS - GPU Accelerated
+   Performance: will-change, contain, translateZ for GPU layers
+   ============================================================================= */
+
+.card-3d {
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 0.1s ease-out;
+  overflow: hidden;
+  /* GPU acceleration hints */
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  /* Rendering isolation for performance */
+  contain: layout style paint;
+}
+
+.card-3d::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  /* Simplified gradient with fewer color stops */
+  background: radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
+      rgba(255, 255, 255, 0.12) 0%,
+      transparent 60%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.card-3d:hover::before {
+  opacity: 1;
+}
+
+.card-3d-content {
+  position: relative;
+  z-index: 2;
+}
+
+/* Disable 3D effects on touch devices for performance */
+@media (hover: none) {
+  .card-3d {
+    transform: none !important;
+    will-change: auto;
+  }
+
+  .card-3d::before {
+    display: none;
+  }
+}
+
+/* =============================================================================
+   CURSOR BLOB EFFECT - GPU Accelerated
+   Performance: will-change, reduced blur, removed expensive mix-blend-mode
+   ============================================================================= */
+
+
+
+.cursor-blob.hidden {
+  opacity: 0;
+}
+
+/* Hide cursor blob on touch devices */
+@media (hover: none) {
+  .cursor-blob {
+    display: none !important;
+  }
+}
+
+/* =============================================================================
+   PROGRESS ELEMENT STYLING
+   ============================================================================= */
+
+.storage-progress {
+  appearance: none;
+}
+
+.storage-progress::-webkit-progress-bar {
+  background-color: #e5e7eb;
+  border-radius: 9999px;
+}
+
+.storage-progress::-webkit-progress-value {
+  background-color: currentColor;
+  border-radius: 9999px;
+}
+
+.storage-progress::-moz-progress-bar {
+  background-color: currentColor;
+  border-radius: 9999px;
+}
+
+.password-strength-progress {
+  appearance: none;
+}
+
+.password-strength-progress::-webkit-progress-bar {
+  background-color: #e5e7eb;
+  border-radius: 9999px;
+}
+
+.password-strength-progress::-webkit-progress-value {
+  background-color: currentColor;
+  border-radius: 9999px;
+}
+
+.password-strength-progress::-moz-progress-bar {
+  background-color: currentColor;
+  border-radius: 9999px;
+}
+
+/* =============================================================================
+   UTILITY CLASSES
+   ============================================================================= */
+
+/* Force left-to-right text flow even inside contenteditable */
+.force-ltr {
+  direction: ltr !important;
+  unicode-bidi: plaintext !important;
+  text-align: left !important;
+}
+
+/* Prevent dev tools portal from being pinned to the viewport origin */
+script:nth-of-type(11)>nextjs-portal {
+  left: unset !important;
+  top: unset !important;
+}
+
+/* =============================================================================
+   PERFORMANCE NOTES:
+   
+   1. Removed universal selector (*) transition - was causing massive overhead
+   2. Added will-change and GPU acceleration hints to animated elements
+   3. Simplified gradients (fewer color stops, smaller blur radius)
+   4. Added contain: layout style paint for rendering isolation
+   5. Disabled expensive effects on touch devices via @media (hover: none)
+   6. Removed mix-blend-mode: screen from cursor-blob (expensive compositing)
+   7. Reduced backdrop-blur from 4px to 2px
+   8. Merged duplicate :root declarations
+   9. Removed unused @font-face (Geist already loaded via next/font)
+   10. Enhanced prefers-reduced-motion support
+   ============================================================================= */

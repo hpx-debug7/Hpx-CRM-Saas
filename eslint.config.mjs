@@ -1,0 +1,62 @@
+import { dirname } from "path";
+import { fileURLToPath } from "url";
+import { FlatCompat } from "@eslint/eslintrc";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+const compat = new FlatCompat({
+  baseDirectory: __dirname,
+});
+
+const eslintConfig = [
+  ...compat.extends("next/core-web-vitals", "next/typescript"),
+  {
+    ignores: [
+      "node_modules/**",
+      ".next/**",
+      "out/**",
+      "build/**",
+      "dist/**",
+      "electron/**",
+      "next-env.d.ts",
+    ],
+  },
+  // Custom rules for code quality and performance
+  // - no-unused-vars: Detects unused imports and variables for bundle size optimization
+  // - react-hooks: Prevents infinite loops and ensures correct hook usage
+  {
+    rules: {
+      '@typescript-eslint/no-unused-vars': ['warn', {
+        argsIgnorePattern: '^_',
+        varsIgnorePattern: '^_',
+        caughtErrorsIgnorePattern: '^_'
+      }],
+      'no-unused-vars': 'off', // Turn off base rule as @typescript-eslint version is used
+      'react-hooks/exhaustive-deps': 'warn',
+      'react-hooks/rules-of-hooks': 'error',
+      // Allow inline styles for react-window virtual scrolling (required for dynamic positioning)
+      'react/forbid-dom-props': 'off',
+      'react/no-inline-styles': 'off',
+      '@next/next/no-css-tags': 'off',
+      'css-modules/no-unused-class': 'off'
+    }
+  },
+  // Specific override for LeadTable component to allow react-window style prop
+  {
+    files: ['app/components/LeadTable.tsx'],
+    rules: {
+      'react/no-inline-styles': 'off',
+      '@next/next/no-css-tags': 'off'
+    }
+  },
+  // Allow legacy scripts and config files to use require() imports (Node tools)
+  {
+    files: ['scripts/**', 'next.config.ts', 'electron/**'],
+    rules: {
+      '@typescript-eslint/no-require-imports': 'off'
+    }
+  }
+];
+
+export default eslintConfig;
