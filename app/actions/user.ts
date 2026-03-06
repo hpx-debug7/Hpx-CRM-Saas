@@ -18,8 +18,8 @@ export interface UserData {
     email: string;
     role: string;
     isActive: boolean;
-    createdAt: Date;
-    lastLoginAt: Date | null;
+    createdAt: string;
+    lastLoginAt: string | null;
     rolePresetId: string | null;
     customPermissions: string | null;
 }
@@ -46,7 +46,11 @@ export async function getUsers(): Promise<UserData[]> {
         orderBy: { createdAt: 'desc' },
     });
 
-    return users;
+    return users.map(user => ({
+        ...user,
+        createdAt: user.createdAt.toISOString(),
+        lastLoginAt: user.lastLoginAt ? user.lastLoginAt.toISOString() : null,
+    }));
 }
 
 /**

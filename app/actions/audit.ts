@@ -105,7 +105,7 @@ export async function getAuditLogs(options: {
         entityId: string | null;
         description: string;
         performedByName: string | null;
-        createdAt: Date;
+        createdAt: string;
         metadata: string | null;
     }[];
     total: number;
@@ -150,7 +150,10 @@ export async function getAuditLogs(options: {
     ]);
 
     return {
-        logs,
+        logs: logs.map(log => ({
+            ...log,
+            createdAt: log.createdAt.toISOString(),
+        })),
         total,
         page,
         totalPages: Math.ceil(total / limit),

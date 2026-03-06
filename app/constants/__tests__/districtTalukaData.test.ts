@@ -1,6 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { getEnv } from '@/lib/server/env';
-const env = getEnv();
+
 import {
   getCategoryByTaluka,
   searchDistricts,
@@ -199,13 +198,12 @@ describe('District Taluka Data', () => {
 
   describe('validateDataset', () => {
     it('should validate dataset structure', () => {
-      // Mock console.log to capture validation output
-      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => { });
+      // Mock console.info to capture validation output
+      const consoleSpy = vi.spyOn(console, 'info').mockImplementation(() => { });
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
 
       // Set NODE_ENV to development to enable validation
-      const originalEnv = env.NODE_ENV;
-      (env as any).NODE_ENV = 'development';
+      vi.stubEnv('NODE_ENV', 'development');
 
       validateDataset();
 
@@ -213,7 +211,7 @@ describe('District Taluka Data', () => {
       expect(consoleSpy).toHaveBeenCalled();
 
       // Restore environment
-      (env as any).NODE_ENV = originalEnv;
+      vi.unstubAllEnvs();
 
       consoleSpy.mockRestore();
       consoleErrorSpy.mockRestore();

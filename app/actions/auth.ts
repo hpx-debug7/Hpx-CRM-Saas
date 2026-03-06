@@ -58,11 +58,12 @@ export async function loginAction(email: string, password: string): Promise<Auth
         // ✅ FIXED: Find user by email or username (globally unique across company)
         let user;
         try {
+            const identifier = email.toLowerCase();
             user = await prisma.user.findFirstOrThrow({
                 where: {
                     OR: [
-                        { email: email.toLowerCase() },
-                        { username: email.toLowerCase() } // Parameter is still called 'email' in the function signature, but acts as username
+                        { email: identifier },
+                        { username: { equals: identifier, mode: 'insensitive' } }
                     ],
                     isActive: true,
                 },

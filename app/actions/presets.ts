@@ -19,8 +19,8 @@ export interface PresetData {
     description: string | null;
     permissions: string;
     isSystem: boolean;
-    createdAt: Date;
-    updatedAt: Date;
+    createdAt: string;
+    updatedAt: string;
     createdById: string | null;
     userCount: number;
 }
@@ -41,7 +41,12 @@ export async function getPresets(): Promise<PresetData[]> {
             const userCount = await prisma.user.count({
                 where: { rolePresetId: preset.id },
             });
-            return { ...preset, userCount };
+            return {
+                ...preset,
+                createdAt: preset.createdAt.toISOString(),
+                updatedAt: preset.updatedAt.toISOString(),
+                userCount
+            };
         })
     );
 
