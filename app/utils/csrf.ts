@@ -1,4 +1,5 @@
 // CSRF Configuration
+import { logger } from '@/lib/client/logger';
 import { debugLogger, DebugCategory } from './debugLogger';
 
 const CSRF_TOKEN_KEY = '_csrf_token';
@@ -60,7 +61,7 @@ export function generateCSRFToken(): string {
     sessionStorage.setItem(CSRF_TOKEN_KEY, JSON.stringify(csrfToken));
     return token;
   } catch (error) {
-    console.error('Failed to generate CSRF token:', error);
+    logger.error('Failed to generate CSRF token:', error);
     throw new Error('Failed to generate security token');
   }
 }
@@ -153,7 +154,7 @@ export function clearCSRFToken(): void {
       csrfAutoRefreshInterval = null;
     }
   } catch (error) {
-    console.error('Failed to clear CSRF token:', error);
+    logger.error('Failed to clear CSRF token:', error);
   }
 }
 
@@ -171,7 +172,7 @@ export function setupCSRFAutoRefresh(): () => void {
     try {
       refreshCSRFToken();
     } catch (error) {
-      console.error('Failed to auto-refresh CSRF token:', error);
+      logger.error('Failed to auto-refresh CSRF token:', error);
     }
   }, 30 * 60 * 1000);
   

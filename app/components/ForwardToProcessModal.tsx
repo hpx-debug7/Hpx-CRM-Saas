@@ -1,5 +1,7 @@
 'use client';
 
+
+import { logger } from '@/lib/client/logger';
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Lead } from '../types/shared';
@@ -178,7 +180,7 @@ const ForwardToProcessModal = React.memo(function ForwardToProcessModal({
                     }));
                     return; // Stop if draft loaded
                 } catch (e) {
-                    console.error("Error loading draft", e);
+                    logger.error("Error loading draft", e);
                 }
             }
             const leadAny = lead as any;

@@ -1,5 +1,7 @@
 'use client';
 
+
+import { logger } from '@/lib/client/logger';
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { DEFAULT_HEADER_LABELS } from '../constants/columnConfig';
 import { validateHeaderName, sanitizeHeaderName } from '../hooks/useValidation';
@@ -50,7 +52,7 @@ export function HeaderProvider({ children }: { children: React.ReactNode }) {
         localStorage.setItem('leadHeaderConfig', JSON.stringify(validatedConfig));
       }
     } catch (error) {
-      console.error('Error loading header configuration:', error);
+      logger.error('Error loading header configuration:', error);
       setHeaderConfig(DEFAULT_HEADER_LABELS);
     }
   }, []);
@@ -61,7 +63,7 @@ export function HeaderProvider({ children }: { children: React.ReactNode }) {
       try {
         localStorage.setItem('leadHeaderConfig', JSON.stringify(config));
       } catch (error) {
-        console.error('Error saving header configuration:', error);
+        logger.error('Error saving header configuration:', error);
       }
     }, 500),
     []
@@ -96,7 +98,7 @@ export function HeaderProvider({ children }: { children: React.ReactNode }) {
     try {
       localStorage.removeItem('leadHeaderConfig');
     } catch (error) {
-      console.error('Error removing header configuration:', error);
+      logger.error('Error removing header configuration:', error);
     }
   }, []);
 

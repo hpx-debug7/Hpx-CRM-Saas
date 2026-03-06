@@ -1,5 +1,7 @@
 'use client';
 
+
+import { logger } from '@/lib/client/logger';
 import React, { useState, useRef } from 'react';
 import { useDocuments } from '../context/DocumentContext';
 import { useUsers } from '../context/UserContext';
@@ -187,7 +189,7 @@ export default function DocumentUploader({ caseId, schemeType: _schemeType }: Do
 
         } catch (err: unknown) {
             const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-            console.error('Upload failed:', err);
+            logger.error('Upload failed:', err);
             setError('Upload failed: ' + errorMessage);
         } finally {
             setIsUploading(false);

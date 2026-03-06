@@ -4,6 +4,7 @@
  * Central authority for all permission keys, role defaults, and resolution logic.
  */
 
+import { logger } from '@/lib/client/logger';
 import { UserRole } from '../types/processTypes';
 
 // ============================================================================
@@ -202,7 +203,7 @@ export function resolvePermissions(
                 }
             }
         } catch {
-            console.warn('Failed to parse preset permissions JSON');
+            logger.warn('Failed to parse preset permissions JSON');
         }
     }
 
@@ -216,7 +217,7 @@ export function resolvePermissions(
                 }
             }
         } catch {
-            console.warn('Failed to parse user custom permissions JSON');
+            logger.warn('Failed to parse user custom permissions JSON');
         }
     }
 

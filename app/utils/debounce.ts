@@ -5,6 +5,7 @@
  * during rapid user interactions like typing in search inputs.
  */
 
+import { logger } from '@/lib/client/logger';
 import { useState, useEffect, useRef, useCallback, DependencyList } from 'react';
 
 /**
@@ -13,7 +14,7 @@ import { useState, useEffect, useRef, useCallback, DependencyList } from 'react'
  * 
  * @example
  * const debouncedSearch = debounce((value: string) => {
- *   console.log('Searching for:', value);
+ *   logger.info('Searching for:', value);
  * }, 300);
  */
 export function debounce<T extends (...args: any[]) => any>(

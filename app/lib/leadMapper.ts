@@ -2,17 +2,17 @@ import type { Lead } from '@/app/types/shared';
 
 type DbLead = {
   id: string;
-  firstName?: string | null;
-  lastName?: string | null;
-  email?: string | null;
-  phone?: string | null;
-  company?: string | null;
-  source?: string | null;
-  status?: string | null;
-  notes?: string | null;
-  customFields?: string | null;
-  assignedToId?: string | null;
-  createdById?: string | null;
+  firstName: string | null;
+  lastName: string | null;
+  email: string | null;
+  phone: string | null;
+  company: string | null;
+  source: string | null;
+  status: string | null;
+  notes: string | null;
+  customFields: string | null;
+  assignedToId: string | null;
+  createdById: string | null;
 };
 
 function safeJsonParse<T>(value: string | null | undefined, fallback: T): T {
@@ -41,7 +41,7 @@ export function toDbLead(input: Lead): DbLead {
   };
 }
 
-export function fromDbLead(dbLead: DbLead): Lead {
+export function fromDbLead(dbLead: Record<string, any>): Lead {
   const fallback: Partial<Lead> = {
     id: dbLead.id,
     clientName: dbLead.firstName || '',

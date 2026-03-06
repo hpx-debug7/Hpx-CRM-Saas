@@ -1,8 +1,10 @@
+import { logger } from '@/lib/server/logger';
 import bcrypt from 'bcryptjs';
 import { SignJWT, jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
 import { prisma } from './db';
-import { env } from './env';
+import { getEnv } from './env';
+const env = getEnv();
 
 // ============================================================================
 // CONSTANTS
@@ -266,7 +268,7 @@ export async function getValidatedSession() {
     // Solution: Verify roles match, if not, invalidate session and reject
     if (dbSession.user.role !== jwtRole) {
         // Role has changed - user must re-authenticate with new role
-        console.warn(
+        logger.warn(
             `[SECURITY] User ${dbSession.userId} role mismatch: JWT has "${jwtRole}" but user now has "${dbSession.user.role}". ` +
             'Invalidating session to prevent privilege escalation.'
         );

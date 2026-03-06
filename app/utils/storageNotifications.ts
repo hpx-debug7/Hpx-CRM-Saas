@@ -1,3 +1,5 @@
+import { logger } from '@/lib/client/logger';
+
 /**
  * Centralized notification helper module for storage-related user feedback.
  * 
@@ -42,7 +44,7 @@ export class StorageNotificationManager {
       try {
         callback(message, type);
       } catch (error) {
-        console.error('Notification callback error:', error);
+        logger.error('Notification callback error:', error);
       }
     });
   }

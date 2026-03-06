@@ -1,5 +1,7 @@
 'use client';
 
+
+import { logger } from '@/lib/client/logger';
 import React, { useState, useEffect } from 'react';
 import { 
   getActiveWorkSession, 
@@ -81,9 +83,9 @@ const WorkSessionTracker: React.FC<WorkSessionTrackerProps> = ({
       setElapsedTime(0);
       
       // Success notification could be added here
-      console.log(`Started tracking work on ${leadName}`);
+      logger.info(`Started tracking work on ${leadName}`);
     } catch (error) {
-      console.error('Error starting work session:', error);
+      logger.error('Error starting work session:', error);
       alert('Failed to start tracking. Please try again.');
     } finally {
       setIsLoading(false);
@@ -100,7 +102,7 @@ const WorkSessionTracker: React.FC<WorkSessionTrackerProps> = ({
       
       if (updatedSession && updatedSession.duration) {
         const durationText = formatDuration(updatedSession.duration);
-        console.log(`Stopped tracking. Total time: ${durationText}`);
+        logger.info(`Stopped tracking. Total time: ${durationText}`);
         
         // Optional: Prompt to add activity note
         // This could be implemented by showing a modal with ActivityLogger
@@ -109,7 +111,7 @@ const WorkSessionTracker: React.FC<WorkSessionTrackerProps> = ({
       setActiveSession(null);
       setElapsedTime(0);
     } catch (error) {
-      console.error('Error stopping work session:', error);
+      logger.error('Error stopping work session:', error);
       alert('Failed to stop tracking. Please try again.');
     } finally {
       setIsLoading(false);

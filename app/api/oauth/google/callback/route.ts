@@ -1,10 +1,12 @@
+import { logger } from '@/lib/server/logger';
 import { NextResponse } from 'next/server';
 import { GmailProvider } from '@/app/lib/email/providers/GmailProvider';
 import { upsertAccount } from '@/app/lib/email/emailService';
 import { runInitialSync } from '@/app/lib/email/syncEngine';
 import { addServerAuditLog } from '@/app/actions/audit';
 import { requireAuth } from '@/app/actions/auth';
-import { env } from '@/lib/env';
+import { getEnv } from '@/lib/server/env';
+const env = getEnv();
 
 export const runtime = 'nodejs';
 
@@ -61,9 +63,9 @@ export async function GET(req: Request) {
 
     await runInitialSync(account);
 
-    return NextResponse.redirect(`${env.BASE_URL || ''}/email`);
+    return NextResponse.redirect(`${process.env.BASE_URL || ''}/email`);
   } catch (error) {
-    console.error('[GMAIL OAUTH CALLBACK] error', error instanceof Error ? error.stack : error);
+    logger.error('[GMAIL OAUTH CALLBACK] error', error instanceof Error ? error.stack : error);
     return NextResponse.json(
       { success: false, error: error instanceof Error ? error.message : 'OAuth callback failed' },
       { status: 500 }

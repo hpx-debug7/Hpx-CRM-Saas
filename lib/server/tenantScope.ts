@@ -24,7 +24,7 @@ import { prisma } from './db';
  * This ensures companyId is ALWAYS included in the where clause.
  */
 function createTenantScope<T extends keyof typeof prisma>(model: T, companyId: string) {
-    const baseModel = prisma[model];
+    const baseModel = prisma[model] as any;
 
     return {
         /**

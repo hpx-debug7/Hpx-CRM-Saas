@@ -1,5 +1,6 @@
 ﻿'use client';
 
+import { logger } from '@/lib/client/logger';
 import { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode, useRef } from 'react';
 import { parseDateFromDDMMYYYY } from '../utils/dateUtils';
 import { Lead, LeadFilters, SavedView, LeadContextType, ColumnConfig, Activity, LeadDeletionAuditLog } from '../types/shared';
@@ -7,6 +8,7 @@ import { getEmployeeName } from '../utils/employeeStorage';
 import { sanitizeLead } from '../utils/sanitizer'; // SV-004: XSS prevention
 import { addAuditLog } from '../utils/storage';
 import { SystemAuditLog, AuditActionType } from '../types/shared';
+
 
 // Helper function to format today's date as DD-MM-YYYY
 const todayDDMMYYYY = () => {
@@ -69,7 +71,7 @@ export function LeadProvider({ children }: { children: ReactNode }) {
 
       addAuditLog(auditLog);
     } catch (error) {
-      console.error('Error creating lead audit log:', error);
+      logger.error('Error creating lead audit log:', error);
     }
   };
 
@@ -86,7 +88,7 @@ export function LeadProvider({ children }: { children: ReactNode }) {
         const payload = await res.json();
         if (payload?.success && Array.isArray(payload.leads)) {
           if (process.env.NODE_ENV === 'development') {
-            console.log('🔍 Loaded leads from backend:', payload.leads.length);
+            logger.info('🔍 Loaded leads from backend:', payload.leads.length);
           }
           if (isMounted) {
             setLeads(payload.leads);
@@ -95,14 +97,14 @@ export function LeadProvider({ children }: { children: ReactNode }) {
           throw new Error('Invalid leads payload');
         }
       } catch (err) {
-        console.error('Backend load failed, falling back to localStorage:', err);
+        logger.error('Backend load failed, falling back to localStorage:', err);
         try {
           const stored = localStorage.getItem('leads');
           if (stored) {
             const parsedLeads = JSON.parse(stored);
             if (process.env.NODE_ENV === 'development') {
-              console.log('🔍 Loading leads from localStorage:', parsedLeads.length, 'leads');
-              console.log('📊 Lead details:', parsedLeads.map((l: Lead) => ({
+              logger.info('🔍 Loading leads from localStorage:', parsedLeads.length, 'leads');
+              logger.info('📊 Lead details:', parsedLeads.map((l: Lead) => ({
                 id: l.id,
                 kva: l.kva,
                 status: l.status,
@@ -114,10 +116,10 @@ export function LeadProvider({ children }: { children: ReactNode }) {
               setLeads(parsedLeads);
             }
           } else if (process.env.NODE_ENV === 'development') {
-            console.log('🔍 No leads found in localStorage');
+            logger.info('🔍 No leads found in localStorage');
           }
         } catch (fallbackError) {
-          console.error('Error loading leads from localStorage:', fallbackError);
+          logger.error('Error loading leads from localStorage:', fallbackError);
         }
       } finally {
         if (isMounted) {
@@ -134,7 +136,7 @@ export function LeadProvider({ children }: { children: ReactNode }) {
         setSavedViews(JSON.parse(storedViews));
       }
     } catch (err) {
-      console.error('Error loading saved views:', err);
+      logger.error('Error loading saved views:', err);
     }
 
     return () => {
@@ -162,11 +164,11 @@ export function LeadProvider({ children }: { children: ReactNode }) {
           throw new Error(`Failed to sync leads: ${res.status}`);
         }
       } catch (error) {
-        console.error('Error saving leads to backend, fallback to localStorage:', error);
+        logger.error('Error saving leads to backend, fallback to localStorage:', error);
         try {
           localStorage.setItem('leads', JSON.stringify(leads));
         } catch (fallbackError) {
-          console.error('Error saving leads to localStorage:', fallbackError);
+          logger.error('Error saving leads to localStorage:', fallbackError);
         }
       }
     }, 1000); // Debounced sync for better batching performance
@@ -194,7 +196,7 @@ export function LeadProvider({ children }: { children: ReactNode }) {
       try {
         localStorage.setItem('savedViews', JSON.stringify(savedViews));
       } catch (error) {
-        console.error('Error saving views to localStorage:', error);
+        logger.error('Error saving views to localStorage:', error);
       }
     }, 500); // Increased debounce for better performance
 
@@ -445,7 +447,7 @@ export function LeadProvider({ children }: { children: ReactNode }) {
       try {
         caseCounter = parseInt(localStorage.getItem('caseCounter') || '0', 10) + 1;
         localStorage.setItem('caseCounter', caseCounter.toString());
-      } catch (e) { console.error(e) }
+      } catch (e) { logger.error(e) }
 
       const year = new Date().getFullYear();
       const paddedCounter = caseCounter.toString().padStart(4, '0');
@@ -539,7 +541,7 @@ export function LeadProvider({ children }: { children: ReactNode }) {
         caseIds: [caseId]
       };
     } catch (error) {
-      console.error('Error forwarding lead to process:', error);
+      logger.error('Error forwarding lead to process:', error);
       return {
         success: false,
         message: `Failed to forward lead: ${error instanceof Error ? error.message : 'Unknown error'}`
@@ -563,8 +565,8 @@ export function LeadProvider({ children }: { children: ReactNode }) {
     const endDate = toDate(filters.followUpDateEnd);
 
     if (process.env.NODE_ENV === 'development') {
-      console.log('🔍 getFilteredLeads called with filters:', filters);
-      console.log('📊 Total leads before filtering:', leads.length);
+      logger.info('🔍 getFilteredLeads called with filters:', filters);
+      logger.info('📊 Total leads before filtering:', leads.length);
     }
 
     const filtered = leads.filter(lead => {
@@ -663,7 +665,7 @@ export function LeadProvider({ children }: { children: ReactNode }) {
     });
 
     if (process.env.NODE_ENV === 'development') {
-      console.log('📊 Final filtered leads count:', filtered.length);
+      logger.info('📊 Final filtered leads count:', filtered.length);
     }
     return filtered;
   }, [leads]);

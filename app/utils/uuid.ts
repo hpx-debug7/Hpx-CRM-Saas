@@ -1,3 +1,5 @@
+import { logger } from '@/lib/client/logger';
+
 /**
  * Centralized UUID generation utility with crypto.randomUUID() polyfill
  * Provides RFC4122 v4 UUID generation with fallback for older browsers
@@ -24,7 +26,7 @@ export function generateUUID(): string {
     
   } catch (error) {
     // If all crypto methods fail, use Math.random() fallback
-    console.warn('Crypto API failed, using Math.random() fallback for UUID generation:', error);
+    logger.warn('Crypto API failed, using Math.random() fallback for UUID generation:', error);
     return generateUUIDWithMathRandom();
   }
 }

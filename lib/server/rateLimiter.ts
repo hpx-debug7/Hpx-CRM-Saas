@@ -1,5 +1,7 @@
+import { logger } from '@/lib/server/logger';
 import { Redis } from '@upstash/redis';
-import { env } from './env';
+import { getEnv } from './env';
+const env = getEnv();
 
 export interface RateLimiter {
     enforce(key: string): Promise<boolean>;
@@ -20,7 +22,7 @@ export class RedisRateLimiter implements RateLimiter {
                 token: env.UPSTASH_REDIS_REST_TOKEN,
             });
         } catch (error) {
-            console.error('[RateLimiter] Failed to initialize Upstash Redis. Falling back to fail-open.', error);
+            logger.error('[RateLimiter] Failed to initialize Upstash Redis. Falling back to fail-open.', error);
             // redis remains null, fail-open policy will apply
         }
     }
@@ -44,7 +46,7 @@ export class RedisRateLimiter implements RateLimiter {
             return count <= this.maxRequests;
         } catch (error) {
             // Fail-open policy execution: If a network/Redis error occurs at runtime, securely allow the request and log the error.
-            console.error(`[RateLimiter] Execution error enforcing rate limit for key ${key}. Failing open.`, error);
+            logger.error(`[RateLimiter] Execution error enforcing rate limit for key ${key}. Failing open.`, error);
             return true;
         }
     }

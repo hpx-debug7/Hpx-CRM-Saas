@@ -1,5 +1,7 @@
 'use client';
 
+
+import { logger } from '@/lib/client/logger';
 import { useState, useEffect, lazy, Suspense, useCallback } from 'react';
 import { useLeads } from '../context/LeadContext';
 import type { Lead } from '../types/shared';
@@ -29,7 +31,7 @@ export default function FollowUpMandatePage() {
     setToastMessage(message);
     setToastType(type);
     setShowToast(true);
-    
+
     // Auto-hide after 3 seconds
     setTimeout(() => {
       setShowToast(false);
@@ -47,11 +49,11 @@ export default function FollowUpMandatePage() {
   }, [searchParams]);
 
   // Filter leads based on status
-  const documentation = leads.filter(lead => 
+  const documentation = leads.filter(lead =>
     !lead.isDeleted && lead.status === 'Documentation' && !lead.isDone
   );
 
-  const mandateSent = leads.filter(lead => 
+  const mandateSent = leads.filter(lead =>
     !lead.isDeleted && lead.status === 'Mandate Sent' && !lead.isDone
   );
 
@@ -87,7 +89,7 @@ export default function FollowUpMandatePage() {
     const urlParams = new URLSearchParams(window.location.search);
     const returnToModal = urlParams.get('returnToModal');
     const leadId = urlParams.get('leadId');
-    
+
     if (returnToModal === 'true' && leadId) {
       // Ensure tab is set correctly first
       const tab = urlParams.get('tab');
@@ -96,7 +98,7 @@ export default function FollowUpMandatePage() {
       } else if (tab === 'pending' || tab === 'documentation') {
         setActiveTab('pending');
       }
-      
+
       // Find the lead and open the modal
       const lead = leads.find(l => l.id === leadId);
       if (lead) {
@@ -104,7 +106,7 @@ export default function FollowUpMandatePage() {
         setShowLeadModal(true);
         document.body.style.overflow = 'hidden';
       }
-      
+
       // Clean up URL parameters while preserving tab parameter
       const newUrl = new URL(window.location.href);
       newUrl.searchParams.delete('returnToModal');
@@ -135,14 +137,14 @@ export default function FollowUpMandatePage() {
       // Get current column configuration to validate dynamic fields
       const visibleColumns = getVisibleColumns();
       const columnConfig = visibleColumns.find(col => col.fieldKey === field);
-      
+
       if (process.env.NODE_ENV === 'development') {
-        console.log('🔧 Cell update debug:', { leadId, field, value, columnConfig });
+        logger.info('🔧 Cell update debug:', { leadId, field, value, columnConfig });
       }
-      
+
       // Validate the field (including custom columns)
       const error = validateLeadField(field as keyof Lead, value, lead, columnConfig);
-      
+
       if (error) {
         // Set validation error
         setValidationErrors(prev => ({
@@ -172,7 +174,7 @@ export default function FollowUpMandatePage() {
 
       // Handle special formatting for different field types
       let formattedValue = value;
-      
+
       // Handle mobileNumbers field (JSON string)
       if (field === 'mobileNumbers' && value) {
         try {
@@ -207,7 +209,7 @@ export default function FollowUpMandatePage() {
       // Only touch activity for important field changes
       const shouldTouchActivity = ['status', 'followUpDate', 'notes'].includes(field);
       await updateLead(updatedLead, { touchActivity: shouldTouchActivity });
-      
+
       // Auto-log status changes
       if (field === 'status') {
         const oldStatus = lead.status;
@@ -221,10 +223,10 @@ export default function FollowUpMandatePage() {
           return; // Prevent generic success toast
         }
       }
-      
+
       showToastNotification('Lead updated successfully!', 'success');
     } catch (error) {
-      console.error('Error updating cell:', error);
+      logger.error('Error updating cell:', error);
       showToastNotification(error instanceof Error ? error.message : 'Failed to update lead', 'error');
       throw error;
     }
@@ -254,7 +256,7 @@ export default function FollowUpMandatePage() {
           <h1 className="text-sm font-bold text-White-800">Follow-up Mandate & Documentation</h1>
           <p className="text-sm text-white mt-2">Manage mandate status and document tracking</p>
         </div>
-        <button 
+        <button
           onClick={() => router.push('/dashboard')}
           className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md transition-colors"
         >
@@ -269,21 +271,19 @@ export default function FollowUpMandatePage() {
           <nav className="flex space-x-8 px-6">
             <button
               onClick={() => setActiveTab('pending')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                activeTab === 'pending'
-                  ? 'border-orange-500 text-orange-600'
-                  : 'border-transparent text-black hover:text-black hover:border-gray-300'
-              }`}
+              className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'pending'
+                ? 'border-orange-500 text-orange-600'
+                : 'border-transparent text-black hover:text-black hover:border-gray-300'
+                }`}
             >
               Documentation ({documentation.length})
             </button>
             <button
               onClick={() => setActiveTab('signed')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                activeTab === 'signed'
-                  ? 'border-green-500 text-green-600'
-                  : 'border-transparent text-black hover:text-black hover:border-gray-300'
-              }`}
+              className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'signed'
+                ? 'border-green-500 text-green-600'
+                : 'border-transparent text-black hover:text-black hover:border-gray-300'
+                }`}
             >
               Mandate Sent ({mandateSent.length})
             </button>
@@ -346,11 +346,10 @@ export default function FollowUpMandatePage() {
       {/* Toast Notification */}
       {showToast && (
         <div className="fixed top-4 right-4 z-50">
-          <div className={`px-6 py-4 rounded-lg shadow-lg text-white font-medium ${
-            toastType === 'success' ? 'bg-green-600' :
+          <div className={`px-6 py-4 rounded-lg shadow-lg text-white font-medium ${toastType === 'success' ? 'bg-green-600' :
             toastType === 'error' ? 'bg-red-600' :
-            'bg-blue-600'
-          }`}>
+              'bg-blue-600'
+            }`}>
             <div className="flex items-center space-x-3">
               {toastType === 'success' && (
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

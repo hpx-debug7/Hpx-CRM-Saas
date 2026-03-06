@@ -1,5 +1,7 @@
 'use client';
 
+
+import { logger } from '@/lib/client/logger';
 import React, { useState, useEffect, useRef } from 'react';
 import { useLeads } from '../context/LeadContext';
 import { storageNotifications } from '../utils/storageNotifications';
@@ -135,7 +137,7 @@ export default function ErrorRecoveryPanel({ isOpen, onClose, errorContext }: Er
       
       setBackups(backupList);
     } catch (error) {
-      console.error('Failed to load backup info:', error);
+      logger.error('Failed to load backup info:', error);
     }
   };
 
@@ -158,7 +160,7 @@ export default function ErrorRecoveryPanel({ isOpen, onClose, errorContext }: Er
       
       setStorageStats({ used, available, total });
     } catch (error) {
-      console.error('Failed to load storage stats:', error);
+      logger.error('Failed to load storage stats:', error);
     }
   };
 

@@ -11,13 +11,28 @@ async function main() {
 
     // Create default admin user
     // YOU MUST CHANGE THIS PASSWORD AFTER FIRST LOGIN!
-    const adminPassword = process.env.ADMIN_PASSWORD || 'Admin@123456';
+    const adminPassword = process.env.ADMIN_PASSWORD || 'secret';
     const hashedPassword = await bcrypt.hash(adminPassword, 12);
 
-    const admin = await prisma.user.upsert({
-        where: { username: 'admin' },
+    // Use a default SYSTEM company for initial seed
+    const companyId = 'SYSTEM';
+
+    // Ensure the SYSTEM company exists first
+    await prisma.company.upsert({
+        where: { id: companyId },
         update: {},
         create: {
+            id: companyId,
+            name: 'System Defaults',
+            slug: 'system-defaults',
+        },
+    });
+
+    const admin = await prisma.user.upsert({
+        where: { companyId_username: { companyId, username: 'admin' } },
+        update: {},
+        create: {
+            companyId,
             username: 'admin',
             name: 'Administrator',
             email: 'admin@company.com',
@@ -90,9 +105,10 @@ async function main() {
 
     for (const preset of systemPresets) {
         await prisma.rolePreset.upsert({
-            where: { name: preset.name },
+            where: { companyId_name: { companyId, name: preset.name } },
             update: {},
             create: {
+                companyId,
                 name: preset.name,
                 description: preset.description,
                 permissions: preset.permissions,
@@ -105,6 +121,7 @@ async function main() {
     // Log the seeding event
     await prisma.auditLog.create({
         data: {
+            companyId,
             actionType: 'SYSTEM_SEED',
             entityType: 'user',
             entityId: admin.id,

@@ -1,3 +1,4 @@
+import { logger } from '@/lib/server/logger';
 import { NextResponse } from 'next/server';
 import { saveUploadedDocument } from '../../../lib/server/documentStorage';
 
@@ -44,7 +45,7 @@ export async function POST(req: Request) {
             uploadedAt: meta.uploadedAt
         });
     } catch (error) {
-        console.error('Document upload failed:', error);
+        logger.error('Document upload failed:', error);
         return NextResponse.json({ error: 'Failed to upload document' }, { status: 500 });
     }
 }

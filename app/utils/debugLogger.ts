@@ -1,3 +1,4 @@
+import { logger } from '@/lib/client/logger';
 /**
  * Debug logging utility with environment-based controls
  * 
@@ -70,8 +71,8 @@ class DebugLogger {
     const debugGeneral = process.env.NEXT_PUBLIC_DEBUG_GENERAL === 'true';
 
     // Check for global debug flag
-    const debugAll = process.env.NEXT_PUBLIC_DEBUG_ALL === 'true' || 
-                     process.env.NODE_ENV === 'development';
+    const debugAll = process.env.NEXT_PUBLIC_DEBUG_ALL === 'true' ||
+      process.env.NODE_ENV === 'development';
 
     // Set enabled categories
     if (debugAll || debugStorage) this.config.categories.add(DebugCategory.STORAGE);
@@ -101,8 +102,8 @@ class DebugLogger {
     this.config.enabled = this.config.categories.size > 0;
 
     // Console logging (always enabled in development)
-    this.config.enableConsole = process.env.NODE_ENV === 'development' || 
-                                process.env.NEXT_PUBLIC_DEBUG_CONSOLE === 'true';
+    this.config.enableConsole = process.env.NODE_ENV === 'development' ||
+      process.env.NEXT_PUBLIC_DEBUG_CONSOLE === 'true';
 
     // Storage logging (disabled by default)
     this.config.enableStorage = process.env.NEXT_PUBLIC_DEBUG_STORAGE_LOGS === 'true';
@@ -237,19 +238,19 @@ class DebugLogger {
 
     switch (logEntry.level) {
       case LogLevel.ERROR:
-        console.error(message, logEntry.data);
+        logger.error(message, logEntry.data);
         break;
       case LogLevel.WARN:
-        console.warn(message, logEntry.data);
+        logger.warn(message, logEntry.data);
         break;
       case LogLevel.INFO:
-        console.info(message, logEntry.data);
+        logger.info(message, logEntry.data);
         break;
       case LogLevel.DEBUG:
-        console.debug(message, logEntry.data);
+        logger.debug(message, logEntry.data);
         break;
       case LogLevel.VERBOSE:
-        console.log(message, logEntry.data);
+        logger.info(message, logEntry.data);
         break;
     }
   }
@@ -266,21 +267,21 @@ class DebugLogger {
         try {
           logs = JSON.parse(existingLogs);
         } catch (parseError) {
-          console.warn('Debug logs corrupted, starting fresh');
+          logger.warn('Debug logs corrupted, starting fresh');
           logs = [];
         }
       }
-      
+
       logs.unshift(logEntry);
-      
+
       // Keep only last 100 logs per category
       if (logs.length > 100) {
         logs.splice(100);
       }
-      
+
       localStorage.setItem(storageKey, JSON.stringify(logs));
     } catch (error) {
-      console.warn('Failed to save debug log to storage:', error);
+      logger.warn('Failed to save debug log to storage:', error);
     }
   }
 }

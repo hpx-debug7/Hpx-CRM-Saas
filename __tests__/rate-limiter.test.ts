@@ -1,5 +1,5 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
-import { loginRateLimiter, RedisRateLimiter } from '@/lib/rateLimiter';
+import { loginRateLimiter, RedisRateLimiter } from '@/lib/server/rateLimiter';
 import { Redis } from '@upstash/redis';
 
 // Note: Testing environment variables for UPSTASH_REDIS_REST_URL/TOKEN
@@ -92,8 +92,8 @@ describe('Distributed Redis Rate Limiter', () => {
     });
 
     test('FAILS OPEN gracefully if Redis throws an error', async () => {
-        // Capture console.error to keep test output clean and assert it was called
-        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
+        // Capture stderr to keep test output clean and assert it was called
+        const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation((() => true) as any);
 
         const limiter = new RedisRateLimiter(5, 600);
 
@@ -104,9 +104,9 @@ describe('Distributed Redis Rate Limiter', () => {
         const result = await limiter.enforce('login:rate:192.168.1.99');
 
         expect(result).toBe(true);
-        expect(consoleSpy).toHaveBeenCalled();
-        expect(consoleSpy.mock.calls[0][0]).toContain('Execution error enforcing rate limit');
+        expect(stderrSpy).toHaveBeenCalled();
+        expect(typeof stderrSpy.mock.calls[0][0] === 'string' && stderrSpy.mock.calls[0][0]).toContain('Execution error enforcing rate limit');
 
-        consoleSpy.mockRestore();
+        stderrSpy.mockRestore();
     });
 });

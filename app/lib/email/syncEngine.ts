@@ -1,11 +1,11 @@
-import { prisma } from '@/lib/db';
+import { prisma } from '@/lib/server/db';
 import { addServerAuditLog } from '@/app/actions/audit';
 import type { EmailProviderName, SyncResult } from './types';
 import { getProvider, ensureValidAccessToken } from './emailService';
 import { collectParticipantEmails, linkThreadToLeads } from './leadLinker';
 import { publishEmailEvent } from './wsPublisher';
 
-async function upsertThread(accountId: string, userId: string, provider: EmailProviderName, thread: any) {
+async function upsertThread(accountId: string, userId: string, companyId: string, provider: EmailProviderName, thread: any) {
   return prisma.emailThread.upsert({
     where: {
       userId_provider_providerThreadId: {
@@ -24,6 +24,7 @@ async function upsertThread(accountId: string, userId: string, provider: EmailPr
       updatedAt: new Date(),
     },
     create: {
+      companyId,
       userId,
       provider,
       providerThreadId: thread.providerThreadId,
@@ -37,7 +38,7 @@ async function upsertThread(accountId: string, userId: string, provider: EmailPr
   });
 }
 
-async function upsertMessage(userId: string, provider: EmailProviderName, threadId: string, message: any) {
+async function upsertMessage(userId: string, companyId: string, provider: EmailProviderName, threadId: string, message: any) {
   const existing = await prisma.emailMessage.findUnique({
     where: { userId_provider_providerMessageId: { userId, provider, providerMessageId: message.providerMessageId } },
     select: { id: true },
@@ -65,6 +66,7 @@ async function upsertMessage(userId: string, provider: EmailProviderName, thread
 
   const created = await prisma.emailMessage.create({
     data: {
+      companyId,
       userId,
       provider,
       threadId,
@@ -88,11 +90,11 @@ async function upsertMessage(userId: string, provider: EmailProviderName, thread
 async function persistSyncResult(account: any, result: SyncResult) {
   const newMessages: { messageId: string; threadId: string }[] = [];
   for (const threadSummary of result.threads) {
-    const thread = await upsertThread(account.id, account.userId, account.provider, threadSummary);
+    const thread = await upsertThread(account.id, account.userId, account.companyId, account.provider, threadSummary);
     const messages = result.messagesByThread[threadSummary.providerThreadId] || [];
 
     for (const message of messages) {
-      const res = await upsertMessage(account.userId, account.provider, thread.id, message);
+      const res = await upsertMessage(account.userId, account.companyId, account.provider, thread.id, message);
       if (res.isNew) {
         newMessages.push({ messageId: message.providerMessageId, threadId: thread.id });
       }
@@ -112,6 +114,7 @@ async function persistSyncResult(account: any, result: SyncResult) {
         lastDeltaToken: account.provider === 'outlook' ? result.cursor : undefined,
       },
       create: {
+        companyId: account.companyId,
         userId: account.userId,
         provider: account.provider,
         lastHistoryId: account.provider === 'gmail' ? result.cursor : undefined,

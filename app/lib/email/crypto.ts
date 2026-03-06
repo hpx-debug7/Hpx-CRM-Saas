@@ -1,5 +1,6 @@
 import crypto from 'crypto';
-import { env } from '@/lib/env';
+import { getEnv } from '@/lib/server/env';
+const env = getEnv();
 
 const ENCRYPTION_KEY = env.EMAIL_ENCRYPTION_KEY;
 
@@ -16,11 +17,11 @@ function getKey(): Buffer {
   if (hex.length === 32 && ENCRYPTION_KEY.length === 64) {
     return hex;
   }
-  if (ENCRYPTION_KEY.length === 32) {
-    return Buffer.from(ENCRYPTION_KEY, 'utf8');
+  if (ENCRYPTION_KEY.length >= 32) {
+    return Buffer.from(ENCRYPTION_KEY, 'utf8').subarray(0, 32);
   }
   throw new Error(
-    'EMAIL_ENCRYPTION_KEY must be 32 bytes. Provide base64 (32 bytes), hex (64 chars), or a raw 32-character string.'
+    'EMAIL_ENCRYPTION_KEY must be 32 bytes. Provide base64 (32 bytes), hex (64 chars), or a raw >32-character string.'
   );
 }
 

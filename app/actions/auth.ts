@@ -1,6 +1,8 @@
 'use server';
 
-import { prisma } from '@/lib/db';
+
+import { logger } from '@/lib/server/logger';
+import { prisma } from '@/lib/server/db';
 import {
     hashPassword,
     verifyPassword,
@@ -11,10 +13,10 @@ import {
     recordFailedLoginAttempt,
     resetFailedLoginAttempts,
     validatePasswordStrength,
-} from '@/lib/auth';
+} from '@/lib/server/auth';
 import { addServerAuditLog } from './audit';
 import { headers } from 'next/headers';
-import { loginSchema, formatValidationError } from '@/lib/validations/auth';
+import { loginSchema, formatValidationError } from '@/lib/shared/validations/auth';
 
 // ============================================================================
 // AUTH SERVER ACTIONS
@@ -38,10 +40,10 @@ export interface AuthResult {
 /**
  * Server action to log in a user.
  */
-export async function loginAction(email: string, password: string): Promise<AuthResult> {
+export async function loginAction(identifier: string, password: string): Promise<AuthResult> {
     try {
         // ✅ Zod validation BEFORE any DB access, password check, or failedAttempts
-        const parsed = loginSchema.safeParse({ email, password });
+        const parsed = loginSchema.safeParse({ identifier, password });
         if (!parsed.success) {
             return {
                 success: false,
@@ -56,11 +58,12 @@ export async function loginAction(email: string, password: string): Promise<Auth
         // ✅ FIXED: Find user by email or username (globally unique across company)
         let user;
         try {
+            const lowerIdentifier = identifier.toLowerCase();
             user = await prisma.user.findFirstOrThrow({
                 where: {
                     OR: [
-                        { email: email.toLowerCase() },
-                        { username: email.toLowerCase() } // Parameter is still called 'email' in the function signature, but acts as username
+                        { email: lowerIdentifier },
+                        { username: { equals: lowerIdentifier, mode: 'insensitive' } }
                     ],
                     isActive: true,
                 },
@@ -75,12 +78,12 @@ export async function loginAction(email: string, password: string): Promise<Auth
             await addServerAuditLog({
                 actionType: 'USER_LOGIN_FAILED',
                 entityType: 'user',
-                description: `Failed login attempt for email "${email}" - User not found or account inactive`,
+                description: `Failed login attempt for identifier "${identifier}" - User not found or account inactive`,
                 ipAddress,
                 userAgent,
-                metadata: { reason: 'user_not_found', attemptedEmail: email },
+                metadata: { reason: 'user_not_found', attemptedIdentifier: identifier },
             });
-            return { success: false, message: 'Invalid email or password' };
+            return { success: false, message: 'Invalid identifier or password' };
         }
 
         // Check if account is locked
@@ -149,7 +152,7 @@ export async function loginAction(email: string, password: string): Promise<Auth
             },
         };
     } catch (error) {
-        console.error('Login error:', error);
+        logger.error('Login error:', error);
         return { success: false, message: 'An error occurred during login' };
     }
 }
@@ -181,7 +184,7 @@ export async function logoutAction(): Promise<{ success: boolean }> {
         await invalidateSession();
         return { success: true };
     } catch (error) {
-        console.error('Logout error:', error);
+        logger.error('Logout error:', error);
         return { success: false };
     }
 }
@@ -226,7 +229,7 @@ export async function getCurrentUser(): Promise<AuthResult['user'] | null> {
             customPermissions: user.customPermissions,
         };
     } catch (error) {
-        console.error('Get current user error:', error);
+        logger.error('Get current user error:', error);
         return null;
     }
 }
@@ -312,7 +315,7 @@ export async function changeOwnPasswordAction(
 
         return { success: true, message: 'Password changed successfully' };
     } catch (error) {
-        console.error('Change password error:', error);
+        logger.error('Change password error:', error);
         return { success: false, message: 'Failed to change password' };
     }
 }

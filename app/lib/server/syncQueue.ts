@@ -1,4 +1,4 @@
-import { prisma } from '@/lib/db';
+import { prisma } from '@/lib/server/db';
 
 export interface SyncQueueItem {
   id: string;
@@ -30,6 +30,7 @@ export class SyncQueueService {
    * Add an operation to the sync queue
    */
   static async enqueue(
+    companyId: string,
     entityType: string,
     entityId: string,
     operation: 'CREATE' | 'UPDATE' | 'DELETE',
@@ -38,6 +39,7 @@ export class SyncQueueService {
   ): Promise<SyncQueueItem> {
     const queueItem = await prisma.syncQueue.create({
       data: {
+        companyId,
         entityType,
         entityId,
         operation,
@@ -234,7 +236,7 @@ export class SyncQueueService {
     const averageRetries =
       allItems.length > 0
         ? allItems.reduce((sum, item) => sum + item.retryCount, 0) /
-          allItems.length
+        allItems.length
         : 0;
 
     return {

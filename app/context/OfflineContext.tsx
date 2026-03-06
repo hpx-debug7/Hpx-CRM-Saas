@@ -1,5 +1,7 @@
 'use client';
 
+
+import { logger } from '@/lib/client/logger';
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 
 export interface OfflineStatus {
@@ -56,7 +58,7 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
             setPendingCount(pending?.length || 0);
           }
         } catch (error) {
-          console.error('Failed to initialize offline status:', error);
+          logger.error('Failed to initialize offline status:', error);
         }
       }
     };
@@ -76,7 +78,7 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
         setIsOnline(data.isOnline);
         if (data.isOnline) {
           // Suggest sync when going online
-          console.log('🔄 Device is online - consider syncing your changes');
+          logger.info('🔄 Device is online - consider syncing your changes');
         }
       };
 
@@ -97,7 +99,7 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
         setSyncStatus('IDLE');
         setLastSyncTime(new Date());
         setPendingCount(0);
-        console.log('✓ Sync completed successfully');
+        logger.info('✓ Sync completed successfully');
       };
 
       (window as any).electron.sync.onComplete(handleSyncComplete);
@@ -116,10 +118,10 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
           const result = await (window as any).electron.offline.toggleMode(mode);
           if (result.success) {
             setOfflineModeSt(mode);
-            console.log(`📱 Offline mode changed to: ${mode}`);
+            logger.info(`📱 Offline mode changed to: ${mode}`);
           }
         } catch (error) {
-          console.error('Failed to toggle offline mode:', error);
+          logger.error('Failed to toggle offline mode:', error);
           throw error;
         }
       }
@@ -133,11 +135,11 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
         setSyncStatus('SYNCING');
         const result = await (window as any).electron.sync.start();
         if (result.success) {
-          console.log('🔄 Sync started');
+          logger.info('🔄 Sync started');
         }
       } catch (error) {
         setSyncStatus('ERROR');
-        console.error('Failed to start sync:', error);
+        logger.error('Failed to start sync:', error);
         throw error;
       }
     }
@@ -148,9 +150,9 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
       try {
         const result = await (window as any).electron.sync.pause();
         setSyncStatus('IDLE');
-        console.log('⏸ Sync paused');
+        logger.info('⏸ Sync paused');
       } catch (error) {
-        console.error('Failed to pause sync:', error);
+        logger.error('Failed to pause sync:', error);
         throw error;
       }
     }
@@ -165,7 +167,7 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
         const result = await (window as any).electron.sync.queue.getPending();
         return result?.data || [];
       } catch (error) {
-        console.error('Failed to get pending queue:', error);
+        logger.error('Failed to get pending queue:', error);
         return [];
       }
     }

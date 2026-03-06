@@ -5,6 +5,7 @@
  * before navigation occurs.
  */
 
+import { logger } from '@/lib/client/logger';
 import { flushPendingSyncFor } from './storage';
 
 // Critical keys that must be flushed before navigation
@@ -26,7 +27,7 @@ export async function flushCriticalData(): Promise<void> {
   try {
     await flushPendingSyncFor(CRITICAL_KEYS);
   } catch (error) {
-    console.error('Failed to flush critical data before navigation:', error);
+    logger.error('Failed to flush critical data before navigation:', error);
   }
 }
 
@@ -97,7 +98,7 @@ export function setupNavigationProtection(): () => void {
         router.events.on('routeChangeStart', handleRouteChange);
       }
     } catch (error) {
-      console.warn('Failed to setup Next.js router protection:', error);
+      logger.warn('Failed to setup Next.js router protection:', error);
     }
   }
 
@@ -113,7 +114,7 @@ export function setupNavigationProtection(): () => void {
           router.events.off('routeChangeStart', handleRouteChange);
         }
       } catch (error) {
-        console.warn('Failed to cleanup Next.js router protection:', error);
+        logger.warn('Failed to cleanup Next.js router protection:', error);
       }
     }
   };
@@ -139,7 +140,7 @@ export function useSafeRouter() {
           router.push(url);
         }
       } catch (error) {
-        console.warn('Failed to navigate with Next.js router:', error);
+        logger.warn('Failed to navigate with Next.js router:', error);
       }
     }
   };
@@ -154,7 +155,7 @@ export function useSafeRouter() {
           router.replace(url);
         }
       } catch (error) {
-        console.warn('Failed to replace with Next.js router:', error);
+        logger.warn('Failed to replace with Next.js router:', error);
       }
     }
   };

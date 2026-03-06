@@ -1,5 +1,7 @@
 'use client';
 
+
+import { logger } from '@/lib/client/logger';
 import { useState, useEffect, useCallback } from 'react';
 
 export interface Template {
@@ -52,7 +54,7 @@ export const useTemplates = (): TemplateManagerHook => {
               oldTemplates.push(template);
             }
           } catch (error) {
-            console.warn(`Error migrating template for ${category}:`, error);
+            logger.warn(`Error migrating template for ${category}:`, error);
           }
         });
 
@@ -146,7 +148,7 @@ export const useTemplates = (): TemplateManagerHook => {
         }
       }
     } catch (error) {
-      console.error('Error initializing templates:', error);
+      logger.error('Error initializing templates:', error);
       // Fallback to default templates
       const defaultTemplates = createDefaultTemplates();
       setTemplates(defaultTemplates);
@@ -187,7 +189,7 @@ export const useTemplates = (): TemplateManagerHook => {
     try {
       localStorage.setItem(TEMPLATES_STORAGE_KEY, JSON.stringify(updatedTemplates));
     } catch (error) {
-      console.error('Error saving templates:', error);
+      logger.error('Error saving templates:', error);
     }
 
     return newTemplate.id;
@@ -224,7 +226,7 @@ export const useTemplates = (): TemplateManagerHook => {
         }
         resolve(true);
       } catch (error) {
-        console.error('Error deleting template:', error);
+        logger.error('Error deleting template:', error);
         resolve(false);
       }
     });
@@ -251,7 +253,7 @@ export const useTemplates = (): TemplateManagerHook => {
       localStorage.setItem(TEMPLATES_STORAGE_KEY, JSON.stringify(updatedTemplates));
       return true;
     } catch (error) {
-      console.error('Error renaming template:', error);
+      logger.error('Error renaming template:', error);
       return false;
     }
   }, [templates]);
@@ -267,7 +269,7 @@ export const useTemplates = (): TemplateManagerHook => {
     try {
       localStorage.setItem(TEMPLATES_STORAGE_KEY, JSON.stringify(updatedTemplates));
     } catch (error) {
-      console.error('Error updating template content:', error);
+      logger.error('Error updating template content:', error);
     }
   }, [templates]);
 

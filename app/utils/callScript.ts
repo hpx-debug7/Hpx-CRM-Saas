@@ -1,3 +1,4 @@
+import { logger } from '@/lib/client/logger';
 import type { Lead } from '../types/shared';
 
 export const PER_LEAD_KEY_PREFIX = 'customCallScript:';
@@ -37,7 +38,7 @@ export const getGlobalTemplate = (): string | null => {
   try {
     return localStorage.getItem(GLOBAL_KEY);
   } catch (err) {
-    console.error('Failed to read global call script template', err);
+    logger.error('Failed to read global call script template', err);
     return null;
   }
 };
@@ -46,7 +47,7 @@ export const saveGlobalTemplate = (template: string) => {
   try {
     localStorage.setItem(GLOBAL_KEY, template);
   } catch (err) {
-    console.error('Failed to save global call script template', err);
+    logger.error('Failed to save global call script template', err);
   }
 };
 

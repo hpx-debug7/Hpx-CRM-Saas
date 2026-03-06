@@ -1,5 +1,7 @@
 'use client';
 
+
+import { logger } from '@/lib/client/logger';
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { UserSession, UserRole, User } from '../types/processTypes';
 import { addAuditLog } from '../utils/storage';
@@ -83,7 +85,7 @@ export function ImpersonationProvider({
                 }
             }
         } catch (error) {
-            console.error('Error loading impersonation session:', error);
+            logger.error('Error loading impersonation session:', error);
             sessionStorage.removeItem(IMPERSONATION_SESSION_KEY);
         }
     }, [currentUser, overrideCurrentUser, isImpersonating]);
@@ -188,7 +190,7 @@ export function ImpersonationProvider({
                 }
             });
         } catch (error) {
-            console.error('Error logging impersonation start:', error);
+            logger.error('Error logging impersonation start:', error);
         }
 
         return { success: true, message: `Now viewing as ${targetUser.name}` };
@@ -232,7 +234,7 @@ export function ImpersonationProvider({
                 }
             });
         } catch (error) {
-            console.error('Error logging impersonation end:', error);
+            logger.error('Error logging impersonation end:', error);
         }
 
         // Restore original user - THIS RESTORES ADMIN PERMISSIONS

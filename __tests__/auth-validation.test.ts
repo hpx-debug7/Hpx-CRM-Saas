@@ -8,9 +8,9 @@
  */
 
 import { describe, test, expect, beforeAll } from 'vitest';
-import { prisma } from '@/lib/db';
-import { hashPassword } from '@/lib/auth';
-import { loginSchema, signupSchema, formatValidationError } from '@/lib/validations/auth';
+import { prisma } from '@/lib/server/db';
+import { hashPassword } from '@/lib/server/auth';
+import { loginSchema, signupSchema, formatValidationError } from '@/lib/shared/validations/auth';
 
 // ============================================================================
 // Schema-level validation tests (no DB, no network)
@@ -22,38 +22,39 @@ describe('Login Schema Validation (Zod gate)', () => {
         expect(result.success).toBe(false);
     });
 
-    test('rejects missing email', () => {
+    test('rejects missing identifier', () => {
         const result = loginSchema.safeParse({ password: 'Test1234!' });
         expect(result.success).toBe(false);
     });
 
     test('rejects missing password', () => {
-        const result = loginSchema.safeParse({ email: 'user@test.com' });
+        const result = loginSchema.safeParse({ identifier: 'admin' });
         expect(result.success).toBe(false);
     });
 
-    test('rejects invalid email format', () => {
-        const result = loginSchema.safeParse({ email: 'not-an-email', password: 'Test1234!' });
-        expect(result.success).toBe(false);
-        if (!result.success) {
-            const msg = formatValidationError(result.error);
-            expect(msg).toContain('Invalid email format');
-        }
+    test('accepts username identifier', () => {
+        const result = loginSchema.safeParse({ identifier: 'admin', password: 'Test1234!' });
+        expect(result.success).toBe(true);
     });
 
-    test('rejects empty string email', () => {
-        const result = loginSchema.safeParse({ email: '', password: 'Test1234!' });
+    test('accepts email identifier', () => {
+        const result = loginSchema.safeParse({ identifier: 'user@test.com', password: 'Test1234!' });
+        expect(result.success).toBe(true);
+    });
+
+    test('rejects empty string identifier', () => {
+        const result = loginSchema.safeParse({ identifier: '', password: 'Test1234!' });
         expect(result.success).toBe(false);
     });
 
     test('rejects empty string password', () => {
-        const result = loginSchema.safeParse({ email: 'user@test.com', password: '' });
+        const result = loginSchema.safeParse({ identifier: 'admin', password: '' });
         expect(result.success).toBe(false);
     });
 
-    test('rejects email exceeding max length', () => {
+    test('rejects identifier exceeding max length', () => {
         const result = loginSchema.safeParse({
-            email: 'a'.repeat(300) + '@test.com',
+            identifier: 'a'.repeat(300),
             password: 'Test1234!',
         });
         expect(result.success).toBe(false);
@@ -61,15 +62,10 @@ describe('Login Schema Validation (Zod gate)', () => {
 
     test('rejects password exceeding max length', () => {
         const result = loginSchema.safeParse({
-            email: 'user@test.com',
+            identifier: 'admin',
             password: 'a'.repeat(200),
         });
         expect(result.success).toBe(false);
-    });
-
-    test('accepts valid email + password', () => {
-        const result = loginSchema.safeParse({ email: 'user@test.com', password: 'Test1234!' });
-        expect(result.success).toBe(true);
     });
 
     test('formatValidationError does not leak Zod internals', () => {
@@ -184,15 +180,15 @@ describe('Login Validation Gate — DB Interaction', () => {
         });
     });
 
-    test('invalid email should NOT increment failedAttempts', async () => {
+    test('missing identifier should NOT increment failedAttempts', async () => {
         // Capture current failedAttempts
         const before = await prisma.user.findUnique({
             where: { id: testUser.id },
             select: { failedLoginAttempts: true },
         });
 
-        // Validation rejects invalid email — loginAction should return early
-        const parsed = loginSchema.safeParse({ email: 'not-an-email', password: 'anything' });
+        // Validation rejects missing identifier — loginAction should return early
+        const parsed = loginSchema.safeParse({ password: 'anything' });
         expect(parsed.success).toBe(false);
         // Since validation fails, loginAction would return before DB access.
 
@@ -226,7 +222,7 @@ describe('Login Validation Gate — DB Interaction', () => {
             select: { failedLoginAttempts: true },
         });
 
-        const parsed = loginSchema.safeParse({ email: testUser.email });
+        const parsed = loginSchema.safeParse({ identifier: testUser.username });
         expect(parsed.success).toBe(false);
 
         const after = await prisma.user.findUnique({

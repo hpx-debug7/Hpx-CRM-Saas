@@ -1,5 +1,7 @@
 'use client';
 
+
+import { logger } from '@/lib/client/logger';
 import { useState, useMemo, useEffect, useCallback, lazy, Suspense } from 'react';
 import { useLeads } from '../context/LeadContext';
 import type { Lead } from '../types/shared';
@@ -36,7 +38,7 @@ export default function DueTodayPage() {
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const tab = urlParams.get('tab');
-    
+
     if (tab === 'overdue') {
       setActiveTab('overdue');
     }
@@ -45,7 +47,7 @@ export default function DueTodayPage() {
   // Helper function to parse DD-MM-YYYY format dates
   const parseFollowUpDate = (dateString: string): Date | null => {
     if (!dateString) return null;
-    
+
     try {
       // Handle DD-MM-YYYY format
       const dateParts = dateString.split('-');
@@ -69,10 +71,10 @@ export default function DueTodayPage() {
 
     return leads.filter(lead => {
       if (lead.isDeleted || lead.isDone || !lead.followUpDate) return false;
-      
+
       const followUpDate = parseFollowUpDate(lead.followUpDate);
       if (!followUpDate) return false;
-      
+
       followUpDate.setHours(0, 0, 0, 0);
       return followUpDate.getTime() === today.getTime();
     });
@@ -84,10 +86,10 @@ export default function DueTodayPage() {
 
     return leads.filter(lead => {
       if (lead.isDeleted || lead.isDone || !lead.followUpDate) return false;
-      
+
       const followUpDate = parseFollowUpDate(lead.followUpDate);
       if (!followUpDate) return false;
-      
+
       followUpDate.setHours(0, 0, 0, 0);
       return followUpDate < today;
     });
@@ -98,7 +100,7 @@ export default function DueTodayPage() {
     setToastMessage(message);
     setToastType(type);
     setShowToast(true);
-    
+
     // Auto-hide after 3 seconds
     setTimeout(() => {
       setShowToast(false);
@@ -117,14 +119,14 @@ export default function DueTodayPage() {
       // Get current column configuration to validate dynamic fields
       const visibleColumns = getVisibleColumns();
       const columnConfig = visibleColumns.find(col => col.fieldKey === field);
-      
+
       if (process.env.NODE_ENV === 'development') {
-        console.log('🔧 Cell update debug:', { leadId, field, value, columnConfig });
+        logger.info('🔧 Cell update debug:', { leadId, field, value, columnConfig });
       }
-      
+
       // Validate the field (including custom columns)
       const error = validateLeadField(field as keyof Lead, value, lead, columnConfig);
-      
+
       if (error) {
         // Set validation error
         setValidationErrors(prev => ({
@@ -175,14 +177,14 @@ export default function DueTodayPage() {
 
       // Update the lead
       await updateLead(updatedLead);
-      
+
       if (field === 'status' && value === 'Work Alloted') {
         showToastNotification('Status changed to WAO. Follow-up date has been cleared.', 'info');
       } else {
         showToastNotification('Lead updated successfully', 'success');
       }
     } catch (error) {
-      console.error('Error updating lead:', error);
+      logger.error('Error updating lead:', error);
       showToastNotification('Failed to update lead. Please try again.', 'error');
     }
   }, [leads, getVisibleColumns, updateLead, showToastNotification]);
@@ -192,23 +194,23 @@ export default function DueTodayPage() {
     if (!dateString || dateString.trim() === '') {
       return '';
     }
-    
+
     // If already in DD-MM-YYYY format, return as is
     if (dateString.match(/^\d{2}-\d{2}-\d{4}$/)) {
       return dateString;
     }
-    
+
     // If it's an ISO date string or Date object, convert to DD-MM-YYYY
     try {
       const date = new Date(dateString);
       if (isNaN(date.getTime())) {
         return dateString; // Return original if invalid
       }
-      
+
       const day = String(date.getDate()).padStart(2, '0');
       const month = String(date.getMonth() + 1).padStart(2, '0');
       const year = date.getFullYear();
-      
+
       return `${day}-${month}-${year}`;
     } catch {
       return dateString; // Return original if conversion fails
@@ -231,39 +233,39 @@ export default function DueTodayPage() {
     try {
       // Small delay to ensure pending header edits are saved
       await new Promise(resolve => setTimeout(resolve, 100));
-      
+
       // Get filtered leads based on current view
       const leadsToExport = activeTab === 'today' ? todayLeads : overdueLeads;
-      
+
       // Use fresh column configuration to ensure latest columns are included
       const visibleColumns = getVisibleColumns();
       if (process.env.NODE_ENV === 'development') {
-        console.log('📊 Export Debug - Using columns:', visibleColumns.map(c => c.label));
-        console.log('📊 Export Debug - Column types:', visibleColumns.map(c => ({ label: c.label, type: c.type, fieldKey: c.fieldKey })));
+        logger.info('📊 Export Debug - Using columns:', visibleColumns.map(c => c.label));
+        logger.info('📊 Export Debug - Column types:', visibleColumns.map(c => ({ label: c.label, type: c.type, fieldKey: c.fieldKey })));
       }
       const headers = visibleColumns.map(column => column.label);
-      
+
       // Convert leads to Excel rows with remapped data
       const rows = leadsToExport.map(lead => {
         // Get mobile numbers and contacts
         const mobileNumbers = lead.mobileNumbers || [];
         const mainMobile = mobileNumbers.find(m => m.isMain) || mobileNumbers[0] || { number: lead.mobileNumber || '', name: '' };
-        
+
         // Format main mobile number (phone number only, no contact name)
         const mainMobileDisplay = mainMobile.number || '';
         if (process.env.NODE_ENV === 'development') {
-          console.log('🔍 Export Debug - Lead:', lead.clientName, 'Main Mobile:', mainMobileDisplay);
+          logger.info('🔍 Export Debug - Lead:', lead.clientName, 'Main Mobile:', mainMobileDisplay);
         }
-        
+
         // Map data according to visible columns using safe property access
         return visibleColumns.map(column => {
           const fieldKey = column.fieldKey;
           const value = (lead as any)[fieldKey] ?? '';
-          
+
           if (process.env.NODE_ENV === 'development') {
-            console.log(`🔍 Export Debug - Field: ${fieldKey}, Value: ${value}, Type: ${column.type}`);
+            logger.info(`🔍 Export Debug - Field: ${fieldKey}, Value: ${value}, Type: ${column.type}`);
           }
-          
+
           // Handle special field formatting
           switch (fieldKey) {
             case 'kva':
@@ -300,22 +302,22 @@ export default function DueTodayPage() {
           }
         });
       });
-      
+
       // Create workbook and worksheet
       const wb = XLSX.utils.book_new();
       const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
-      
+
       // Add worksheet to workbook
       XLSX.utils.book_append_sheet(wb, ws, 'Leads');
-      
+
       // Generate Excel file and download
       XLSX.writeFile(wb, `leads-export-${new Date().toISOString().split('T')[0]}.xlsx`);
-      
+
       // Close modal and show success message
       setShowExportPasswordModal(false);
       showToastNotification(`Successfully exported ${leadsToExport.length} leads to Excel format`, 'success');
     } catch (error) {
-      console.error('Export error:', error);
+      logger.error('Export error:', error);
       showToastNotification('Failed to export leads. Please try again.', 'error');
     }
   };
@@ -336,7 +338,7 @@ export default function DueTodayPage() {
   // Handle ESC key to close modal
   useEffect(() => {
     if (isModalOpen) return; // Let LeadDetailModal handle ESC when modal is open
-    
+
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape' && isModalOpen) {
         closeModal();
@@ -354,7 +356,7 @@ export default function DueTodayPage() {
     const urlParams = new URLSearchParams(window.location.search);
     const returnToModal = urlParams.get('returnToModal');
     const leadId = urlParams.get('leadId');
-    
+
     if (returnToModal === 'true' && leadId) {
       // Find the lead and open the modal
       const lead = leads.find(l => l.id === leadId);
@@ -363,7 +365,7 @@ export default function DueTodayPage() {
         setIsModalOpen(true);
         document.body.style.overflow = 'hidden';
       }
-      
+
       // Clean up URL parameters
       const newUrl = new URL(window.location.href);
       newUrl.searchParams.delete('returnToModal');
@@ -382,22 +384,22 @@ export default function DueTodayPage() {
     const currentColumnCount = getVisibleColumns().length;
     if (currentColumnCount !== columnCount) {
       if (process.env.NODE_ENV === 'development') {
-        console.log('🔄 Column count changed:', columnCount, '->', currentColumnCount);
+        logger.info('🔄 Column count changed:', columnCount, '->', currentColumnCount);
       }
       setColumnCount(currentColumnCount);
-      
+
       // Force more aggressive re-render by clearing cached filter results
       // This ensures the table completely re-mounts with new column configuration
       const tableKey = `table-${currentColumnCount}-${Date.now()}`;
       if (process.env.NODE_ENV === 'development') {
-        console.log('🔄 Forcing table re-mount with key:', tableKey);
+        logger.info('🔄 Forcing table re-mount with key:', tableKey);
       }
-      
+
       // Force re-render by updating a dummy state
       if (process.env.NODE_ENV === 'development') {
-        console.log('🔄 Table re-mounted with', currentColumnCount, 'columns');
+        logger.info('🔄 Table re-mounted with', currentColumnCount, 'columns');
       }
-      
+
       // Clear any validation errors that might be stale
       setValidationErrors({});
     }
@@ -440,11 +442,10 @@ export default function DueTodayPage() {
         const sourcePage = activeTab === 'today' ? 'due-today' : 'due-today';
         router.push(`/add-lead?mode=edit&id=${lead.id}&from=${sourcePage}&tab=${activeTab}`);
       }}
-      className={`px-3 py-1 text-sm rounded-md transition-colors ${
-        activeTab === 'today' 
-          ? 'bg-yellow-600 hover:bg-yellow-700 text-white' 
-          : 'bg-red-600 hover:bg-red-700 text-white'
-      }`}
+      className={`px-3 py-1 text-sm rounded-md transition-colors ${activeTab === 'today'
+        ? 'bg-yellow-600 hover:bg-yellow-700 text-white'
+        : 'bg-red-600 hover:bg-red-700 text-white'
+        }`}
     >
       Update Status
     </button>
@@ -458,7 +459,7 @@ export default function DueTodayPage() {
           <h1 className="text-sm font-bold text-White-800">Due Today & Overdue Follow-ups</h1>
           <p className="text-sm text-white mt-2">Manage leads with follow-ups due today or overdue</p>
         </div>
-        <button 
+        <button
           onClick={() => router.push('/dashboard')}
           className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md transition-colors"
         >
@@ -473,21 +474,19 @@ export default function DueTodayPage() {
           <nav className="flex space-x-8 px-6">
             <button
               onClick={() => setActiveTab('today')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                activeTab === 'today'
-                  ? 'border-yellow-500 text-yellow-600'
-                  : 'border-transparent text-black hover:text-black hover:border-gray-300'
-              }`}
+              className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'today'
+                ? 'border-yellow-500 text-yellow-600'
+                : 'border-transparent text-black hover:text-black hover:border-gray-300'
+                }`}
             >
               Due Today ({todayLeads.length})
             </button>
             <button
               onClick={() => setActiveTab('overdue')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                activeTab === 'overdue'
-                  ? 'border-red-500 text-red-600'
-                  : 'border-transparent text-black hover:text-black hover:border-gray-300'
-              }`}
+              className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'overdue'
+                ? 'border-red-500 text-red-600'
+                : 'border-transparent text-black hover:text-black hover:border-gray-300'
+                }`}
             >
               Overdue ({overdueLeads.length})
             </button>
@@ -556,7 +555,7 @@ export default function DueTodayPage() {
           <PasswordModal
             isOpen={showExportPasswordModal}
             onClose={() => {
-            setShowExportPasswordModal(false);
+              setShowExportPasswordModal(false);
             }}
             operation="export"
             onSuccess={handleExportPasswordSuccess}
@@ -582,11 +581,10 @@ export default function DueTodayPage() {
       {/* Toast Notification */}
       {showToast && (
         <div className="fixed top-4 right-4 z-50">
-          <div className={`px-6 py-4 rounded-lg shadow-lg text-white font-medium ${
-            toastType === 'success' ? 'bg-green-600' :
+          <div className={`px-6 py-4 rounded-lg shadow-lg text-white font-medium ${toastType === 'success' ? 'bg-green-600' :
             toastType === 'error' ? 'bg-red-600' :
-            'bg-blue-600'
-          }`}>
+              'bg-blue-600'
+            }`}>
             <div className="flex items-center space-x-3">
               {toastType === 'success' && (
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

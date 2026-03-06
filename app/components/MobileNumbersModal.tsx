@@ -1,5 +1,7 @@
 'use client';
 
+
+import { logger } from '@/lib/client/logger';
 import React, { useState, useEffect } from 'react';
 import type { Lead, MobileNumber } from '../types/shared';
 import { validateMobileNumber } from '../hooks/useValidation';
@@ -150,7 +152,7 @@ const MobileNumbersModal = React.memo<MobileNumbersModalProps>(function MobileNu
       await onSave(updatedLead);
       onClose();
     } catch (error) {
-      console.error('Error saving mobile numbers:', error);
+      logger.error('Error saving mobile numbers:', error);
     } finally {
       setIsSubmitting(false);
     }

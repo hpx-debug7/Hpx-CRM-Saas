@@ -1,7 +1,9 @@
 'use server';
 
-import { prisma } from '@/lib/db';
-import { hashPassword } from '@/lib/auth';
+
+import { logger } from '@/lib/server/logger';
+import { prisma } from '@/lib/server/db';
+import { hashPassword } from '@/lib/server/auth';
 import { requireRole } from './auth';
 import { addServerAuditLog } from './audit';
 
@@ -16,8 +18,8 @@ export interface UserData {
     email: string;
     role: string;
     isActive: boolean;
-    createdAt: Date;
-    lastLoginAt: Date | null;
+    createdAt: string;
+    lastLoginAt: string | null;
     rolePresetId: string | null;
     customPermissions: string | null;
 }
@@ -44,7 +46,11 @@ export async function getUsers(): Promise<UserData[]> {
         orderBy: { createdAt: 'desc' },
     });
 
-    return users;
+    return users.map(user => ({
+        ...user,
+        createdAt: user.createdAt.toISOString(),
+        lastLoginAt: user.lastLoginAt ? user.lastLoginAt.toISOString() : null,
+    }));
 }
 
 /**
@@ -62,17 +68,17 @@ export async function createUserAction(data: {
     try {
         const session = await requireRole(['ADMIN']);
 
-        // Check for duplicate username
-        const existingUsername = await prisma.user.findUnique({
-            where: { username: data.username.toLowerCase() },
+        // Check for duplicate username within company
+        const existingUsername = await prisma.user.findFirst({
+            where: { companyId: session.companyId, username: data.username.toLowerCase() },
         });
         if (existingUsername) {
             return { success: false, message: 'Username already exists' };
         }
 
-        // Check for duplicate email
-        const existingEmail = await prisma.user.findUnique({
-            where: { email: data.email.toLowerCase() },
+        // Check for duplicate email within company
+        const existingEmail = await prisma.user.findFirst({
+            where: { companyId: session.companyId, email: data.email.toLowerCase() },
         });
         if (existingEmail) {
             return { success: false, message: 'Email already exists' };
@@ -82,6 +88,7 @@ export async function createUserAction(data: {
 
         const user = await prisma.user.create({
             data: {
+                companyId: session.companyId,
                 username: data.username.toLowerCase(),
                 name: data.name,
                 email: data.email.toLowerCase(),
@@ -115,7 +122,7 @@ export async function createUserAction(data: {
 
         return { success: true, message: 'User created successfully', userId: user.id };
     } catch (error) {
-        console.error('Create user error:', error);
+        logger.error('Create user error:', error);
         return { success: false, message: 'Failed to create user' };
     }
 }
@@ -173,7 +180,7 @@ export async function updateUserAction(
 
         return { success: true, message: 'User updated successfully' };
     } catch (error) {
-        console.error('Update user error:', error);
+        logger.error('Update user error:', error);
         return { success: false, message: 'Failed to update user' };
     }
 }
@@ -208,7 +215,7 @@ export async function deleteUserAction(userId: string): Promise<{ success: boole
 
         return { success: true, message: 'User deleted successfully' };
     } catch (error) {
-        console.error('Delete user error:', error);
+        logger.error('Delete user error:', error);
         return { success: false, message: 'Failed to delete user' };
     }
 }
@@ -253,7 +260,7 @@ export async function resetUserPasswordAction(userId: string): Promise<{ success
 
         return { success: true, message: 'Password reset successfully', newPassword };
     } catch (error) {
-        console.error('Reset password error:', error);
+        logger.error('Reset password error:', error);
         return { success: false, message: 'Failed to reset password' };
     }
 }

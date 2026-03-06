@@ -1,5 +1,6 @@
+import { logger } from '@/lib/server/logger';
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
+import { prisma } from '@/lib/server/db';
 import { runIncrementalSync } from '@/app/lib/email/syncEngine';
 
 export const runtime = 'nodejs';
@@ -41,7 +42,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Gmail webhook error:', error);
+    logger.error('Gmail webhook error:', error);
     return NextResponse.json({ success: false });
   }
 }

@@ -1,4 +1,5 @@
-import { prisma } from '../lib/db';
+import { logger } from '@/lib/server/logger';
+import { prisma } from '../lib/server/db';
 import { runIncrementalSync } from '../app/lib/email/syncEngine';
 
 async function main() {
@@ -16,7 +17,7 @@ async function main() {
 
 main()
   .catch((err) => {
-    console.error('Email sync cron failed:', err);
+    logger.error('Email sync cron failed:', err);
     process.exit(1);
   })
   .finally(async () => {

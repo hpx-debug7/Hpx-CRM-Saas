@@ -1,4 +1,4 @@
-import { prisma } from '@/lib/db';
+import { prisma } from '@/lib/server/db';
 
 function normalizeEmail(raw: string): string | null {
   const match = raw.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
@@ -33,7 +33,7 @@ export async function linkThreadToLeads(threadId: string, participantEmails: str
     where: {
       email: { in: participantEmails },
     },
-    select: { id: true },
+    select: { id: true, companyId: true },
   });
 
   if (leads.length === 0) return;
@@ -52,9 +52,15 @@ export async function linkThreadToLeads(threadId: string, participantEmails: str
 
   for (const lead of leads) {
     await prisma.emailThreadLead.upsert({
-      where: { threadId_leadId: { threadId, leadId: lead.id } },
+      where: {
+        companyId_threadId_leadId: {
+          companyId: lead.companyId,
+          threadId,
+          leadId: lead.id,
+        },
+      },
       update: {},
-      create: { threadId, leadId: lead.id },
+      create: { companyId: lead.companyId, threadId, leadId: lead.id },
     });
   }
 }

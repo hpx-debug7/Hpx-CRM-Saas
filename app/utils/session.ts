@@ -1,4 +1,5 @@
 // Session Configuration
+import { logger } from '@/lib/client/logger';
 import { debugLogger, DebugCategory } from './debugLogger';
 const SESSION_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
 const SESSION_WARNING_MS = 5 * 60 * 1000; // 5 minutes before timeout
@@ -85,7 +86,7 @@ export function startSession(): string {
     setupSessionCheckInterval();
     return sessionId;
   } catch (error) {
-    console.error('Failed to start session:', error);
+    logger.error('Failed to start session:', error);
     throw new Error('Failed to initialize session');
   }
 }
@@ -154,7 +155,7 @@ export function updateSessionActivity(): void {
   try {
     sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
   } catch (error) {
-    console.error('Failed to update session activity:', error);
+    logger.error('Failed to update session activity:', error);
   }
 }
 
@@ -177,7 +178,7 @@ export function invalidateSession(): void {
       try {
         callback();
       } catch (error) {
-        console.error('Error in session expiry callback:', error);
+        logger.error('Error in session expiry callback:', error);
       }
     });
 
@@ -187,7 +188,7 @@ export function invalidateSession(): void {
       sessionCheckInterval = null;
     }
   } catch (error) {
-    console.error('Failed to invalidate session:', error);
+    logger.error('Failed to invalidate session:', error);
   }
 }
 
@@ -207,7 +208,7 @@ export function verifyOperation(operation: string): void {
   try {
     sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
   } catch (error) {
-    console.error('Failed to verify operation:', error);
+    logger.error('Failed to verify operation:', error);
   }
 }
 
@@ -240,7 +241,7 @@ export function clearOperationVerification(operation: string): void {
   try {
     sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
   } catch (error) {
-    console.error('Failed to clear operation verification:', error);
+    logger.error('Failed to clear operation verification:', error);
   }
 }
 

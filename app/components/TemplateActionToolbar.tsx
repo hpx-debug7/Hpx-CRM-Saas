@@ -1,5 +1,7 @@
 'use client';
 
+
+import { logger } from '@/lib/client/logger';
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Copy, MessageCircle, ChevronDown } from 'lucide-react';
@@ -96,7 +98,7 @@ const TemplateActionToolbar = React.memo<TemplateActionToolbarProps>(function Te
       // Clear success message after 2 seconds
       setTimeout(() => setCopySuccess(false), 2000);
     } catch (error) {
-      console.error('Failed to copy text:', error);
+      logger.error('Failed to copy text:', error);
     }
   };
 
@@ -128,7 +130,7 @@ const TemplateActionToolbar = React.memo<TemplateActionToolbarProps>(function Te
       }
     } catch (error) {
       setPhoneError('An unexpected error occurred');
-      console.error('WhatsApp send error:', error);
+      logger.error('WhatsApp send error:', error);
     } finally {
       setIsLoading(false);
     }

@@ -1,4 +1,4 @@
-import { prisma } from '@/lib/db';
+import { prisma } from '@/lib/server/db';
 import { encryptString } from './crypto';
 import type { EmailProviderName, TokenSet, SendEmailPayload, SendEmailResult } from './types';
 import { GmailProvider } from './providers/GmailProvider';
@@ -30,6 +30,7 @@ export async function getAccountForUser(userId: string, provider?: EmailProvider
 
 export async function upsertAccount(params: {
   userId: string;
+  companyId?: string;
   provider: EmailProviderName;
   emailAddress: string;
   providerAccountId?: string | null;
@@ -49,6 +50,7 @@ export async function upsertAccount(params: {
       status: 'ACTIVE',
     },
     create: {
+      companyId: params.companyId || 'default',
       userId: params.userId,
       provider: params.provider,
       emailAddress: params.emailAddress,

@@ -1,3 +1,4 @@
+import { logger } from '@/lib/client/logger';
 /**
  * Storage Error Logger
  * Centralized logging for storage-related errors
@@ -87,7 +88,7 @@ class StorageErrorLogger {
 
   private logError(error: StorageError): void {
     this.errors.push(error);
-    
+
     // Keep only the most recent errors
     if (this.errors.length > this.maxErrors) {
       this.errors = this.errors.slice(-this.maxErrors);
@@ -95,7 +96,7 @@ class StorageErrorLogger {
 
     // Log to console in development
     if (process.env.NODE_ENV === 'development') {
-      console.error(`[${error.category.toUpperCase()}] ${error.message}`, error.error);
+      logger.error(`[${error.category.toUpperCase()}] ${error.message}`, error.error);
     }
   }
 
@@ -123,17 +124,17 @@ class StorageErrorLogger {
 export const storageErrorLogger = new StorageErrorLogger();
 
 // Export individual functions for backward compatibility
-export const logStorageError = (message: string, error?: Error, context?: Record<string, any>) => 
+export const logStorageError = (message: string, error?: Error, context?: Record<string, any>) =>
   storageErrorLogger.logStorageError(message, error, context);
 
-export const logQuotaExceeded = (message: string, context?: Record<string, any>) => 
+export const logQuotaExceeded = (message: string, context?: Record<string, any>) =>
   storageErrorLogger.logQuotaExceeded(message, context);
 
-export const logEncryptionError = (message: string, error?: Error, context?: Record<string, any>) => 
+export const logEncryptionError = (message: string, error?: Error, context?: Record<string, any>) =>
   storageErrorLogger.logEncryptionError(message, error, context);
 
-export const logDecryptionError = (message: string, error?: Error, context?: Record<string, any>) => 
+export const logDecryptionError = (message: string, error?: Error, context?: Record<string, any>) =>
   storageErrorLogger.logDecryptionError(message, error, context);
 
-export const logValidationError = (message: string, error?: Error, context?: Record<string, any>) => 
+export const logValidationError = (message: string, error?: Error, context?: Record<string, any>) =>
   storageErrorLogger.logValidationError(message, error, context);

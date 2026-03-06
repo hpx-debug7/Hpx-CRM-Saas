@@ -1,3 +1,5 @@
+import { logger } from '@/lib/client/logger';
+
 /**
  * Centralized WhatsApp utility functions
  * Handles all WhatsApp operations with proper error handling and fallbacks
@@ -117,7 +119,7 @@ const tryDesktopApp = async (url: string, timeout: number): Promise<WhatsAppResu
       link.click();
       document.body.removeChild(link);
     } catch (error) {
-      console.warn('Desktop app link method failed:', error);
+      logger.warn('Desktop app link method failed:', error);
     }
 
     // Method 2: Try with iframe (more reliable)
@@ -137,7 +139,7 @@ const tryDesktopApp = async (url: string, timeout: number): Promise<WhatsAppResu
         }
       }, 1000);
     } catch (error) {
-      console.warn('Desktop app iframe method failed:', error);
+      logger.warn('Desktop app iframe method failed:', error);
     }
 
     // Set timeout to detect if desktop app opened

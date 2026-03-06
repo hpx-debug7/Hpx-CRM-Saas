@@ -1,3 +1,4 @@
+import { logger } from '@/lib/client/logger';
 // District-Taluka-Category mapping data for Gujarat
 // Faithful transcription from the 5 reference tables
 
@@ -41,7 +42,7 @@ export const ALIASES: Record<string, string[]> = {
 
 // Normalize name helper
 export function normalizeName(s: string): string {
-  return s.toLowerCase().normalize('NFKD').replace(/[\p{Diacritic}]/gu,'').replace(/[^a-z0-9]+/gi,' ').trim().replace(/\s+/g,' ');
+  return s.toLowerCase().normalize('NFKD').replace(/[\p{Diacritic}]/gu, '').replace(/[^a-z0-9]+/gi, ' ').trim().replace(/\s+/g, ' ');
 }
 
 // Build reverse alias index - normalized for case-insensitive matching
@@ -484,10 +485,10 @@ export function getCategoryByTaluka(district: string, taluka: string): 'I' | 'II
   const normalizedTaluka = normalizeName(taluka);
   const districtData = DISTRICT_TALUKA_MAP.find(data => normalizeName(data.district) === normalizedDistrict);
   if (!districtData) return null;
-  
+
   // Check canonical name first
   let talukaInfo = districtData.talukas.find(t => normalizeName(t.name) === normalizedTaluka);
-  
+
   // If not found, check aliases
   if (!talukaInfo) {
     const canonicalTaluka = aliasToCanonical[normalizedTaluka];
@@ -495,15 +496,15 @@ export function getCategoryByTaluka(district: string, taluka: string): 'I' | 'II
       talukaInfo = districtData.talukas.find(t => normalizeName(t.name) === normalizeName(canonicalTaluka));
     }
   }
-  
+
   return talukaInfo ? talukaInfo.category : null;
 }
 
 export function searchDistricts(searchTerm: string): string[] {
   if (!searchTerm.trim()) return getAllDistricts();
-  
+
   const normalizedSearchTerm = normalizeName(searchTerm);
-  return getAllDistricts().filter(district => 
+  return getAllDistricts().filter(district =>
     normalizeName(district).includes(normalizedSearchTerm)
   );
 }
@@ -511,9 +512,9 @@ export function searchDistricts(searchTerm: string): string[] {
 export function searchTalukas(district: string, searchTerm: string): TalukaInfo[] {
   const talukas = getTalukasByDistrict(district);
   if (!searchTerm.trim()) return talukas;
-  
+
   const normalizedSearchTerm = normalizeName(searchTerm);
-  return talukas.filter(taluka => 
+  return talukas.filter(taluka =>
     normalizeName(taluka.name).includes(normalizedSearchTerm)
   );
 }
@@ -521,24 +522,24 @@ export function searchTalukas(district: string, searchTerm: string): TalukaInfo[
 // Validation function (exported only in dev)
 export function validateDataset(): void {
   if (process.env.NODE_ENV !== 'development') return;
-  
-  console.log('Validating Gujarat District-Taluka-Category dataset...');
-  
+
+  logger.info('Validating Gujarat District-Taluka-Category dataset...');
+
   // Check district count
   const districtCount = DISTRICT_TALUKA_MAP.length;
-  console.log(`✓ Districts: ${districtCount} (expected: 33)`);
-  
+  logger.info(`✓ Districts: ${districtCount} (expected: 33)`);
+
   if (districtCount !== 33) {
-    console.error(`❌ Expected 33 districts, found ${districtCount}`);
+    logger.error(`❌ Expected 33 districts, found ${districtCount}`);
   }
-  
+
   // Count categories
   let categoryICount = 0;
   let categoryIICount = 0;
   let categoryIIICount = 0;
   const duplicateTalukas: string[] = [];
   const allTalukaNames = new Set<string>();
-  
+
   DISTRICT_TALUKA_MAP.forEach(district => {
     district.talukas.forEach(taluka => {
       if (allTalukaNames.has(taluka.name)) {
@@ -546,7 +547,7 @@ export function validateDataset(): void {
       } else {
         allTalukaNames.add(taluka.name);
       }
-      
+
       switch (taluka.category) {
         case 'I': categoryICount++; break;
         case 'II': categoryIICount++; break;
@@ -554,20 +555,20 @@ export function validateDataset(): void {
       }
     });
   });
-  
-  console.log(`✓ Category I: ${categoryICount} (expected: 119)`);
-  console.log(`✓ Category II: ${categoryIICount} (expected: 76)`);
-  console.log(`✓ Category III: ${categoryIIICount} (expected: 56)`);
-  
+
+  logger.info(`✓ Category I: ${categoryICount} (expected: 119)`);
+  logger.info(`✓ Category II: ${categoryIICount} (expected: 76)`);
+  logger.info(`✓ Category III: ${categoryIIICount} (expected: 56)`);
+
   if (categoryICount !== 119 || categoryIICount !== 76 || categoryIIICount !== 56) {
-    console.error(`❌ Category counts don't match expected totals`);
+    logger.error(`❌ Category counts don't match expected totals`);
   }
-  
+
   if (duplicateTalukas.length > 0) {
-    console.error(`❌ Duplicate taluka names found: ${duplicateTalukas.join(', ')}`);
+    logger.error(`❌ Duplicate taluka names found: ${duplicateTalukas.join(', ')}`);
   } else {
-    console.log('✓ No duplicate taluka names found');
+    logger.info('✓ No duplicate taluka names found');
   }
-  
-  console.log('Dataset validation complete.');
+
+  logger.info('Dataset validation complete.');
 }

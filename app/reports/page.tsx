@@ -1,5 +1,7 @@
 'use client';
 
+
+import { logger } from '@/lib/client/logger';
 import React, { useState, useMemo } from 'react';
 import { useCases } from '../context/CaseContext';
 import { useUsers } from '../context/UserContext';
@@ -322,7 +324,7 @@ export default function ReportsPage() {
             // Download
             XLSX.writeFile(wb, `process-report-${new Date().toISOString().split('T')[0]}.xlsx`);
         } catch (error) {
-            console.error('Export error:', error);
+            logger.error('Export error:', error);
         }
     };
 

@@ -1,5 +1,7 @@
 'use client';
 
+
+import { logger } from '@/lib/client/logger';
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Lead } from '../types/shared';
@@ -95,7 +97,7 @@ export default React.memo(function LeadDetailModal({
         alert(`Failed to forward: ${result.message}`);
       }
     } catch (error) {
-      console.error('Forward error:', error);
+      logger.error('Forward error:', error);
       alert('An error occurred during forwarding.');
     } finally {
       setIsConverting(false);
@@ -178,7 +180,7 @@ export default React.memo(function LeadDetailModal({
       setCopiedField(fieldName);
       setTimeout(() => setCopiedField(null), 2000); // Reset after 2 seconds
     } catch (err) {
-      console.error('Failed to copy text: ', err);
+      logger.error('Failed to copy text: ', err);
     }
   }, []);
 
@@ -253,7 +255,7 @@ export default React.memo(function LeadDetailModal({
       setGeneratedScript(resolved);
       setEditableScript(editingAsTemplate ? templateToSave : resolved);
     } catch (error) {
-      console.error('Failed to persist global call script template', error);
+      logger.error('Failed to persist global call script template', error);
     }
 
     setIsEditingScript(false);
@@ -991,7 +993,7 @@ ${dynamicFieldsInfo ? `\nAdditional Information:\n${dynamicFieldsInfo}` : ''}`;
         onClose={() => setShowQuickBenefitModal(false)}
         onSave={(payload) => {
           // Handle the new template-based payload
-          console.log('Template saved:', payload.templateName, 'Content:', payload.content);
+          logger.info('Template saved:', payload.templateName, 'Content:', payload.content);
           // You can add additional logic here if needed for template processing
         }}
       />

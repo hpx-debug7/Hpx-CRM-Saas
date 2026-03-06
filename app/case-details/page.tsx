@@ -1,5 +1,7 @@
 'use client';
 
+
+import { logger } from '@/lib/client/logger';
 import React, { useState, useEffect, Suspense, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCases } from '../context/CaseContext';
@@ -102,7 +104,7 @@ function CaseDetailContent() {
                         setNotes(allNotes.filter((n: any) => n.caseId === caseId));
                     }
                 } catch (e) {
-                    console.error('Failed to load notes', e);
+                    logger.error('Failed to load notes', e);
                 }
             }
             setLoading(false);
@@ -1000,7 +1002,7 @@ function CaseDetailContent() {
                                                             allNotes.push(note);
                                                             localStorage.setItem('caseNotes', JSON.stringify(allNotes));
                                                         } catch (e) {
-                                                            console.error('Failed to save note', e);
+                                                            logger.error('Failed to save note', e);
                                                         }
 
                                                         setNewNote('');

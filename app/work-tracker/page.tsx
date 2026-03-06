@@ -1,5 +1,7 @@
 'use client';
 
+
+import { logger } from '@/lib/client/logger';
 import React, { useState, useMemo, lazy, Suspense } from 'react';
 import { useLeads } from '../context/LeadContext';
 import { getEmployeeName, calculateWorkStats, getWorkSessions } from '../utils/employeeStorage';
@@ -114,7 +116,7 @@ export default function WorkTrackerPage() {
       setSelectedLead(lead);
       setShowLeadModal(true);
     } else {
-      console.warn('Lead not found:', leadId);
+      logger.warn('Lead not found:', leadId);
     }
   };
 
@@ -205,7 +207,7 @@ export default function WorkTrackerPage() {
 
       showToastNotification(`Successfully exported work report to ${filename}`, 'success');
     } catch (error) {
-      console.error('Export error:', error);
+      logger.error('Export error:', error);
       showToastNotification('Failed to export work report. Please try again.', 'error');
     } finally {
       setIsExporting(false);

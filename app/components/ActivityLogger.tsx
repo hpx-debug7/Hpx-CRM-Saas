@@ -1,5 +1,7 @@
 'use client';
 
+
+import { logger } from '@/lib/client/logger';
 import React, { useState } from 'react';
 import { useLeads } from '../context/LeadContext';
 import type { Activity } from '../types/shared';
@@ -61,7 +63,7 @@ const ActivityLogger = React.memo<ActivityLoggerProps>(function ActivityLogger({
 
       // Success feedback could be added here (toast notification)
     } catch (error) {
-      console.error('Error adding activity:', error);
+      logger.error('Error adding activity:', error);
       alert('Failed to add activity. Please try again.');
     } finally {
       setIsSubmitting(false);

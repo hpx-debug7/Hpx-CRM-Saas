@@ -1,5 +1,7 @@
 'use client';
 
+
+import { logger } from '@/lib/client/logger';
 import React, { useState, useMemo, useEffect, useCallback, lazy, Suspense } from 'react';
 import { FixedSizeList as List } from 'react-window';
 import { useLeads } from '../context/LeadContext';
@@ -92,7 +94,7 @@ const LeadTable = React.memo(function LeadTable({
     const currentColumns = getVisibleColumns();
     const columnCount = currentColumns.length;
     if (process.env.NODE_ENV === 'development') {
-      console.log('Column configuration updated:', columnCount, 'visible columns');
+      logger.info('Column configuration updated:', columnCount, 'visible columns');
     }
     setColumnVersion(columnCount);
   }, [getVisibleColumns]);
@@ -136,7 +138,7 @@ const LeadTable = React.memo(function LeadTable({
       updateHeader(field, newLabel);
       setEditingHeader(null);
     } catch (error) {
-      console.error('Error updating header:', error);
+      logger.error('Error updating header:', error);
       // Error will be handled by EditableHeaderCell component
     }
   }, [updateHeader]);
@@ -164,14 +166,14 @@ const LeadTable = React.memo(function LeadTable({
 
   const handleColumnAdded = useCallback((column: any) => {
     if (process.env.NODE_ENV === 'development') {
-      console.log('Column added successfully:', column);
+      logger.info('Column added successfully:', column);
     }
     onColumnAdded?.(column);
     setColumnManagementOpen(false);
     setColumnOperation(null);
     // Force table re-render
     if (process.env.NODE_ENV === 'development') {
-      console.log('Table will re-render with new column:', column.fieldKey);
+      logger.info('Table will re-render with new column:', column.fieldKey);
     }
 
     // Scroll headers into view after a short delay to allow for re-render
@@ -185,14 +187,14 @@ const LeadTable = React.memo(function LeadTable({
 
   const handleColumnDeleted = useCallback((fieldKey: string) => {
     if (process.env.NODE_ENV === 'development') {
-      console.log('Column deleted successfully:', fieldKey);
+      logger.info('Column deleted successfully:', fieldKey);
     }
     onColumnDeleted?.(fieldKey);
     setColumnManagementOpen(false);
     setColumnOperation(null);
     // Force table re-render
     if (process.env.NODE_ENV === 'development') {
-      console.log('Table will re-render without column:', fieldKey);
+      logger.info('Table will re-render without column:', fieldKey);
     }
   }, [onColumnDeleted]);
 
@@ -349,7 +351,7 @@ const LeadTable = React.memo(function LeadTable({
 
         // If we have leads but no visible rows, virtualization might be broken
         if (sortedLeads.length > 0 && visibleRows.length === 0) {
-          console.warn('Virtualization may be causing rendering issues, falling back to standard rendering');
+          logger.warn('Virtualization may be causing rendering issues, falling back to standard rendering');
           setVirtualizationError(true);
         }
       }, 100);
@@ -360,11 +362,11 @@ const LeadTable = React.memo(function LeadTable({
 
   // Add render time tracking and performance monitoring
   if (process.env.NODE_ENV === 'development') {
-    console.log('LeadTable rendering', sortedLeads.length, 'leads', useVirtualization ? 'with virtualization' : 'standard');
+    logger.info('LeadTable rendering', sortedLeads.length, 'leads', useVirtualization ? 'with virtualization' : 'standard');
 
     // Performance warning for very large datasets
     if (sortedLeads.length > 10000) {
-      console.warn(`Large dataset detected (${sortedLeads.length} leads). Consider implementing pagination or advanced virtualization.`);
+      logger.warn(`Large dataset detected (${sortedLeads.length} leads). Consider implementing pagination or advanced virtualization.`);
     }
   }
 
@@ -609,7 +611,7 @@ const LeadTable = React.memo(function LeadTable({
           // Debug logging for dynamic columns
           if (process.env.NODE_ENV === 'development') {
             if (!(fieldKey in lead)) {
-              console.log(`Dynamic column "${fieldKey}" not found in lead data, using default value`);
+              logger.info(`Dynamic column "${fieldKey}" not found in lead data, using default value`);
             }
           }
 
@@ -788,115 +790,115 @@ const LeadTable = React.memo(function LeadTable({
       <div className="h-[calc(100vh-220px)] overflow-y-auto">
         <table key={columnVersion} className="min-w-full divide-y divide-gray-200 bg-white table-container">
           <thead className={`${stickyHeaderEnabled ? 'sticky top-0 z-30' : ''} bg-white border-b shadow-sm`}>
-          <tr>
-            {onLeadSelection && (
-              <th scope="col" className="px-0.5 py-1.5 text-left w-8">
-                <div className="w-8 h-8 flex items-center justify-center">
-                  <input
-                    type="checkbox"
-                    checked={selectAll}
-                    ref={(input) => {
-                      if (input) {
-                        const selectedCount = selectedLeads ? selectedLeads.size : 0;
-                        input.indeterminate = selectedCount > 0 && selectedCount < filteredLeads.length;
-                      }
-                    }}
-                    onChange={(e) => onSelectAll && onSelectAll(e.target.checked)}
-                    className="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500 cursor-pointer"
-                    aria-label="Select all leads"
-                  />
-                </div>
-              </th>
-            )}
-            {getVisibleColumns().map((column) => {
-              const field = column.fieldKey;
-              const isEditing = editingHeader === field;
-              const displayName = field === 'termLoan' ? 'Term Loan' : getDisplayName(field);
-
-              // Define column widths based on column configuration
-              const getColumnWidth = (column: ColumnConfig) => {
-                // Use column width from configuration, mapping to Tailwind classes
-                if (column.width <= 100) return 'w-8';
-                if (column.width <= 120) return 'w-8';
-                if (column.width <= 150) return 'w-20';
-                if (column.width <= 200) return 'w-32';
-                if (column.width <= 250) return 'w-36';
-                return 'w-40';
-              };
-
-              return (
-                <th
-                  key={field}
-                  scope="col"
-                  className={`px-0.5 py-1.5 text-left text-xs font-medium text-black uppercase tracking-wider ${!isEditing ? 'cursor-pointer hover:bg-gray-100' : ''} ${getColumnWidth(column)}`}
-                  onClick={!isEditing ? () => handleSort(field as SortField) : undefined}
-                >
-                  {headerEditable ? (
-                    <div className="flex items-center w-full">
-                      <EditableHeaderCell
-                        fieldKey={field}
-                        currentLabel={displayName}
-                        onSave={handleHeaderSave}
-                        onCancel={() => setEditingHeader(null)}
-                        disabled={!headerEditable}
-                        className="flex-1"
-                        onEditStart={(field) => setEditingHeader(field)}
-                        onEditEnd={() => setEditingHeader(null)}
-                        existingHeaders={Object.values(headerConfig)}
-                        onAddColumnBefore={handleAddColumnBefore}
-                        onAddColumnAfter={handleAddColumnAfter}
-                        onDeleteColumn={handleDeleteColumn}
-                        onColumnSettings={handleColumnSettings}
-                      />
-                      {!isEditing && renderSortIndicator(field as SortField)}
-                    </div>
-                  ) : (
-                    <span className="flex items-center">
-                      {displayName}
-                      {renderSortIndicator(field as SortField)}
-                    </span>
-                  )}
+            <tr>
+              {onLeadSelection && (
+                <th scope="col" className="px-0.5 py-1.5 text-left w-8">
+                  <div className="w-8 h-8 flex items-center justify-center">
+                    <input
+                      type="checkbox"
+                      checked={selectAll}
+                      ref={(input) => {
+                        if (input) {
+                          const selectedCount = selectedLeads ? selectedLeads.size : 0;
+                          input.indeterminate = selectedCount > 0 && selectedCount < filteredLeads.length;
+                        }
+                      }}
+                      onChange={(e) => onSelectAll && onSelectAll(e.target.checked)}
+                      className="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500 cursor-pointer"
+                      aria-label="Select all leads"
+                    />
+                  </div>
                 </th>
-              );
-            })}
-            {showActions && (
-              <th scope="col" className="px-0.5 py-1.5 text-left text-xs font-medium text-black uppercase tracking-wider w-20">
-                Actions
-              </th>
-            )}
-          </tr>
+              )}
+              {getVisibleColumns().map((column) => {
+                const field = column.fieldKey;
+                const isEditing = editingHeader === field;
+                const displayName = field === 'termLoan' ? 'Term Loan' : getDisplayName(field);
+
+                // Define column widths based on column configuration
+                const getColumnWidth = (column: ColumnConfig) => {
+                  // Use column width from configuration, mapping to Tailwind classes
+                  if (column.width <= 100) return 'w-8';
+                  if (column.width <= 120) return 'w-8';
+                  if (column.width <= 150) return 'w-20';
+                  if (column.width <= 200) return 'w-32';
+                  if (column.width <= 250) return 'w-36';
+                  return 'w-40';
+                };
+
+                return (
+                  <th
+                    key={field}
+                    scope="col"
+                    className={`px-0.5 py-1.5 text-left text-xs font-medium text-black uppercase tracking-wider ${!isEditing ? 'cursor-pointer hover:bg-gray-100' : ''} ${getColumnWidth(column)}`}
+                    onClick={!isEditing ? () => handleSort(field as SortField) : undefined}
+                  >
+                    {headerEditable ? (
+                      <div className="flex items-center w-full">
+                        <EditableHeaderCell
+                          fieldKey={field}
+                          currentLabel={displayName}
+                          onSave={handleHeaderSave}
+                          onCancel={() => setEditingHeader(null)}
+                          disabled={!headerEditable}
+                          className="flex-1"
+                          onEditStart={(field) => setEditingHeader(field)}
+                          onEditEnd={() => setEditingHeader(null)}
+                          existingHeaders={Object.values(headerConfig)}
+                          onAddColumnBefore={handleAddColumnBefore}
+                          onAddColumnAfter={handleAddColumnAfter}
+                          onDeleteColumn={handleDeleteColumn}
+                          onColumnSettings={handleColumnSettings}
+                        />
+                        {!isEditing && renderSortIndicator(field as SortField)}
+                      </div>
+                    ) : (
+                      <span className="flex items-center">
+                        {displayName}
+                        {renderSortIndicator(field as SortField)}
+                      </span>
+                    )}
+                  </th>
+                );
+              })}
+              {showActions && (
+                <th scope="col" className="px-0.5 py-1.5 text-left text-xs font-medium text-black uppercase tracking-wider w-20">
+                  Actions
+                </th>
+              )}
+            </tr>
           </thead>
-        {/* Conditional rendering: Virtual scrolling for large lists, standard rendering for small lists */}
+          {/* Conditional rendering: Virtual scrolling for large lists, standard rendering for small lists */}
           {sortedLeads.length > 0 ? (
             (useVirtualization && !virtualizationError) ? (
-            // Virtual scrolling enabled for performance with large datasets
-            // Note: Virtual scrolling may cause table structure issues in some browsers
-            // If data doesn't display correctly, reduce VIRTUALIZATION_THRESHOLD
-            <List
-              key={sortedLeads.length}
-              height={Math.min(CONTAINER_HEIGHT, window.innerHeight - 300)}
-              itemCount={sortedLeads.length}
-              itemSize={ROW_HEIGHT}
-              width="100%"
-              overscanCount={10}
-              innerElementType="tbody"
-              className="bg-white divide-y divide-gray-200"
-              itemData={itemData}
-            >
-              {LeadRow}
-            </List>
+              // Virtual scrolling enabled for performance with large datasets
+              // Note: Virtual scrolling may cause table structure issues in some browsers
+              // If data doesn't display correctly, reduce VIRTUALIZATION_THRESHOLD
+              <List
+                key={sortedLeads.length}
+                height={Math.min(CONTAINER_HEIGHT, window.innerHeight - 300)}
+                itemCount={sortedLeads.length}
+                itemSize={ROW_HEIGHT}
+                width="100%"
+                overscanCount={10}
+                innerElementType="tbody"
+                className="bg-white divide-y divide-gray-200"
+                itemData={itemData}
+              >
+                {LeadRow}
+              </List>
             ) : (
-            // Standard rendering optimized with React.memo and stable keys
-            // Handles up to 5000 leads efficiently on modern browsers
-            <tbody className="bg-white divide-y divide-gray-200">
-              {sortedLeads.map((lead, index) => (
-                <LeadRow
-                  key={lead.id}
-                  index={index}
-                  data={itemData}
-                />
-              ))}
-            </tbody>
+              // Standard rendering optimized with React.memo and stable keys
+              // Handles up to 5000 leads efficiently on modern browsers
+              <tbody className="bg-white divide-y divide-gray-200">
+                {sortedLeads.map((lead, index) => (
+                  <LeadRow
+                    key={lead.id}
+                    index={index}
+                    data={itemData}
+                  />
+                ))}
+              </tbody>
             )
           ) : (
             <tbody className="bg-white divide-y divide-gray-200">

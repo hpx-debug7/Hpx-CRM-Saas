@@ -15,9 +15,7 @@ import { OfflineProvider } from "./context/OfflineContext";
 import NavigationWrapper from "./components/NavigationWrapper";
 import EmployeeSetupWrapper from "./components/EmployeeSetupWrapper";
 import { OfflineStatusBar } from "./components/OfflineStatusBar";
-import { assertEmailEncryptionKey } from "./lib/email/crypto";
 
-assertEmailEncryptionKey();
 
 
 const geistSans = Geist({

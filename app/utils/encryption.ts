@@ -1,3 +1,5 @@
+import { logger } from '@/lib/client/logger';
+
 /**
  * Encryption utility for sensitive data storage
  * 
@@ -101,7 +103,7 @@ export async function setMasterKey(passphrase: string): Promise<boolean> {
 
     return true;
   } catch (error) {
-    console.error('Failed to set master key:', error);
+    logger.error('Failed to set master key:', error);
     masterKey = null;
     masterKeyDerived = false;
     return false;
@@ -127,7 +129,7 @@ export async function verifyMasterKey(passphrase: string): Promise<boolean> {
 
     return true;
   } catch (error) {
-    console.error('Failed to verify master key:', error);
+    logger.error('Failed to verify master key:', error);
     masterKey = null;
     masterKeyDerived = false;
     return false;
@@ -181,7 +183,7 @@ export async function encryptData(data: string): Promise<string> {
     // Return base64 encoded result
     return btoa(String.fromCharCode(...combined));
   } catch (error) {
-    console.error('Encryption failed:', error);
+    logger.error('Encryption failed:', error);
     throw new Error('Failed to encrypt data');
   }
 }
@@ -219,7 +221,7 @@ export async function decryptData(encryptedData: string): Promise<string> {
     const decoder = new TextDecoder();
     return decoder.decode(decryptedData);
   } catch (error) {
-    console.error('Decryption failed:', error);
+    logger.error('Decryption failed:', error);
     throw new Error('Failed to decrypt data');
   }
 }
@@ -243,7 +245,7 @@ export async function rotateMasterKey(oldPassphrase: string, newPassphrase: stri
         try {
           decryptedData[key] = await decryptData(encryptedValue);
         } catch (error) {
-          console.warn(`Failed to decrypt ${key}, skipping rotation for this key:`, error);
+          logger.warn(`Failed to decrypt ${key}, skipping rotation for this key:`, error);
         }
       }
     }
@@ -260,14 +262,14 @@ export async function rotateMasterKey(oldPassphrase: string, newPassphrase: stri
         const reEncrypted = await encryptData(value);
         localStorage.setItem(key, reEncrypted);
       } catch (error) {
-        console.error(`Failed to re-encrypt ${key}:`, error);
+        logger.error(`Failed to re-encrypt ${key}:`, error);
         throw new Error(`Key rotation failed for ${key}`);
       }
     }
 
     return true;
   } catch (error) {
-    console.error('Master key rotation failed:', error);
+    logger.error('Master key rotation failed:', error);
     return false;
   }
 }

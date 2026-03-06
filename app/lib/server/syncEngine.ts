@@ -1,5 +1,5 @@
-import { prisma } from '@/lib/db';
-import { env } from '@/lib/env';
+import { logger } from '@/lib/server/logger';
+import { prisma } from '@/lib/server/db';
 import { SyncQueueService } from './syncQueue';
 
 export interface SyncCheckpoint {
@@ -27,8 +27,9 @@ export interface SyncStats {
 }
 
 const MAX_BATCH_SIZE = 50;
-const SERVER_BASE_URL = env.SYNC_SERVER_URL;
-const DEVICE_ID = env.DEVICE_ID;
+const SERVER_BASE_URL = process.env.SYNC_SERVER_URL || '';
+const DEVICE_ID = process.env.DEVICE_ID || 'default';
+const COMPANY_ID = process.env.COMPANY_ID || 'SYSTEM';
 const API_VERSION = 'v2';
 
 /**
@@ -59,7 +60,8 @@ export class SyncEngine {
   static async getSyncCheckpoint(entityType: string): Promise<SyncCheckpoint> {
     const checkpoint = await prisma.syncCheckpoint.findUnique({
       where: {
-        entityType_deviceId: {
+        companyId_entityType_deviceId: {
+          companyId: COMPANY_ID,
           entityType,
           deviceId: DEVICE_ID,
         },
@@ -82,12 +84,14 @@ export class SyncEngine {
   ): Promise<void> {
     await prisma.syncCheckpoint.upsert({
       where: {
-        entityType_deviceId: {
+        companyId_entityType_deviceId: {
+          companyId: COMPANY_ID,
           entityType,
           deviceId: DEVICE_ID,
         },
       },
       create: {
+        companyId: COMPANY_ID,
         entityType,
         deviceId: DEVICE_ID,
         lastSyncVersion,
@@ -113,32 +117,32 @@ export class SyncEngine {
     const stats: SyncStats = { pulled: 0, pushed: 0, conflicts: 0, errors: 0, duration: 0 };
 
     try {
-      console.log('🔄 Starting sync cycle...');
+      logger.info('🔄 Starting sync cycle...');
 
       // Phase 1: Pull server changes
       stats.pulled = await this.pullServerChanges();
-      console.log(`✓ Pulled ${stats.pulled} changes from server`);
+      logger.info(`✓ Pulled ${stats.pulled} changes from server`);
 
       // Phase 2: Push local changes
       const pushResult = await this.pushLocalChanges();
       stats.pushed = pushResult.pushed;
       stats.conflicts = pushResult.conflicts;
-      console.log(`✓ Pushed ${stats.pushed} changes to server`);
+      logger.info(`✓ Pushed ${stats.pushed} changes to server`);
 
       // Phase 3: Resolve conflicts if any
       if (stats.conflicts > 0) {
-        console.log(`⚠ Found ${stats.conflicts} conflicts`);
+        logger.info(`⚠ Found ${stats.conflicts} conflicts`);
         const resolved = await this.resolveConflicts();
-        console.log(`✓ Resolved ${resolved} conflicts`);
+        logger.info(`✓ Resolved ${resolved} conflicts`);
       }
 
       stats.duration = performance.now() - startTime;
-      console.log(`✓ Sync completed in ${stats.duration.toFixed(0)}ms`);
+      logger.info(`✓ Sync completed in ${stats.duration.toFixed(0)}ms`);
 
       return stats;
     } catch (error) {
       stats.errors = 1;
-      console.error('✗ Sync failed:', error);
+      logger.error('✗ Sync failed:', error);
       throw error;
     } finally {
       this.isSyncing = false;
@@ -165,7 +169,7 @@ export class SyncEngine {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
-                Authorization: `Bearer ${env.SYNC_API_KEY}`,
+                Authorization: `Bearer ${process.env.SYNC_API_KEY || ''}`,
               },
               body: JSON.stringify({
                 type: entityType,
@@ -196,7 +200,7 @@ export class SyncEngine {
           }
         }
       } catch (error) {
-        console.error(`Error pulling ${entityType} changes:`, error);
+        logger.error(`Error pulling ${entityType} changes:`, error);
       }
     }
 
@@ -252,6 +256,7 @@ export class SyncEngine {
           // Local version is newer - mark as conflict
           await prisma.conflictLog.create({
             data: {
+              companyId: COMPANY_ID,
               entityType,
               entityId: id,
               localVersion: localItem._version,
@@ -298,7 +303,7 @@ export class SyncEngine {
         }
       }
     } catch (error) {
-      console.error(
+      logger.error(
         `Error applying ${entityType} change (${operation}):`,
         error
       );
@@ -331,7 +336,7 @@ export class SyncEngine {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${env.SYNC_API_KEY}`,
+            Authorization: `Bearer ${process.env.SYNC_API_KEY || ''}`,
           },
           body: JSON.stringify({
             batch,
@@ -364,6 +369,7 @@ export class SyncEngine {
         for (const conflict of result.conflicts) {
           await prisma.conflictLog.create({
             data: {
+              companyId: COMPANY_ID,
               entityType: conflict.entityType,
               entityId: conflict.id,
               localVersion: 0,
@@ -390,7 +396,7 @@ export class SyncEngine {
         conflicts: result.conflicts ? result.conflicts.length : 0,
       };
     } catch (error) {
-      console.error('Error pushing changes:', error);
+      logger.error('Error pushing changes:', error);
 
       // Mark all as failed for retry
       await SyncQueueService.markFailedBatch(
@@ -427,7 +433,7 @@ export class SyncEngine {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${env.SYNC_API_KEY}`,
+            Authorization: `Bearer ${process.env.SYNC_API_KEY || ''}`,
           },
           body: JSON.stringify({ conflicts: resolutions }),
         }
@@ -447,7 +453,7 @@ export class SyncEngine {
         return conflicts.length;
       }
     } catch (error) {
-      console.error('Error resolving conflicts:', error);
+      logger.error('Error resolving conflicts:', error);
     }
 
     return 0;

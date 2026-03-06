@@ -1,5 +1,7 @@
 'use client';
 
+
+import { logger } from '@/lib/client/logger';
 import React, { useState, FormEvent, ChangeEvent, useEffect } from 'react';
 import { useLeads } from '../context/LeadContext';
 import type { Lead, MobileNumber } from '../types/shared';
@@ -145,7 +147,7 @@ export default function AddLeadPage() {
     const tab = searchParams.get('tab');
     const id = searchParams.get('id');
 
-    console.log('🔍 Add-lead page params:', { mode, from, tab, id, leadsCount: leads.length });
+    logger.info('🔍 Add-lead page params:', { mode, from, tab, id, leadsCount: leads.length });
 
     // Check if user came from home page
     if (from === 'home') {
@@ -163,9 +165,9 @@ export default function AddLeadPage() {
     }
 
     if (mode === 'edit') {
-      console.log('🔍 Edit mode detected, looking for lead data...');
+      logger.info('🔍 Edit mode detected, looking for lead data...');
       const storedLead = localStorage.getItem('editingLead');
-      console.log('🔍 Stored lead in localStorage:', storedLead ? 'exists' : 'not found');
+      logger.info('🔍 Stored lead in localStorage:', storedLead ? 'exists' : 'not found');
 
       if (storedLead) {
         try {
@@ -179,8 +181,8 @@ export default function AddLeadPage() {
           const mobileNumbers: MobileNumber[] = buildMobileNumbersFromLead(leadData);
 
           if (process.env.NODE_ENV === 'development') {
-            console.log('Mobile numbers being set:', mobileNumbers); // Debug log
-            console.log('Lead data discom:', leadData.discom); // Debug log for discom
+            logger.info('Mobile numbers being set:', mobileNumbers); // Debug log
+            logger.info('Lead data discom:', leadData.discom); // Debug log for discom
           }
 
           // Determine primary mobile number with all known key variants to hydrate the legacy field
@@ -232,15 +234,15 @@ export default function AddLeadPage() {
 
           setCustomFields(customFieldValues);
         } catch (error) {
-          console.error('Error parsing stored lead data:', error);
+          logger.error('Error parsing stored lead data:', error);
         }
       } else if (id && leads.length > 0) {
-        console.log('🔍 No stored lead, but found ID in URL, searching leads...', id);
+        logger.info('🔍 No stored lead, but found ID in URL, searching leads...', id);
         const leadData = leads.find(lead => lead.id === id);
-        console.log('🔍 Found lead by ID:', leadData ? 'yes' : 'no');
+        logger.info('🔍 Found lead by ID:', leadData ? 'yes' : 'no');
 
         if (leadData) {
-          console.log('🔍 Setting up edit mode with lead from context...');
+          logger.info('🔍 Setting up edit mode with lead from context...');
           setIsEditMode(true);
           setEditingLeadId(leadData.id);
           // Extract address from notes if it exists
@@ -250,8 +252,8 @@ export default function AddLeadPage() {
           const mobileNumbers: MobileNumber[] = buildMobileNumbersFromLead(leadData);
 
           if (process.env.NODE_ENV === 'development') {
-            console.log('Mobile numbers being set:', mobileNumbers); // Debug log
-            console.log('Lead data discom:', leadData.discom); // Debug log for discom
+            logger.info('Mobile numbers being set:', mobileNumbers); // Debug log
+            logger.info('Lead data discom:', leadData.discom); // Debug log for discom
           }
 
           // Handle custom unit type for editing
@@ -287,10 +289,10 @@ export default function AddLeadPage() {
           });
 
           setCustomFields(customFieldValues);
-          console.log('🔍 Edit mode setup complete with lead from context');
+          logger.info('🔍 Edit mode setup complete with lead from context');
         }
       } else {
-        console.log('🔍 No lead data found - neither in localStorage nor by ID');
+        logger.info('🔍 No lead data found - neither in localStorage nor by ID');
       }
     }
 
@@ -305,14 +307,14 @@ export default function AddLeadPage() {
 
     if (leads.length > 0 && formData.mobileNumbers[0]?.number?.length === 10 && !customFields.clientName?.trim()) {
       if (process.env.NODE_ENV === 'development') {
-        console.log('🔄 useEffect: Attempting auto-detection for mobile:', formData.mobileNumbers[0].number);
+        logger.info('🔄 useEffect: Attempting auto-detection for mobile:', formData.mobileNumbers[0].number);
       }
 
       const existingLead = leads.find(lead => {
         // Check main mobile number (backward compatibility)
         if (lead.mobileNumber && lead.mobileNumber.trim() === formData.mobileNumbers[0]?.number) {
           if (process.env.NODE_ENV === 'development') {
-            console.log('✅ useEffect: Found match in main mobile number:', lead.clientName);
+            logger.info('✅ useEffect: Found match in main mobile number:', lead.clientName);
           }
           return true;
         }
@@ -324,7 +326,7 @@ export default function AddLeadPage() {
           );
           if (hasMatch) {
             if (process.env.NODE_ENV === 'development') {
-              console.log('✅ useEffect: Found match in mobile numbers array:', lead.clientName);
+              logger.info('✅ useEffect: Found match in mobile numbers array:', lead.clientName);
             }
             return true;
           }
@@ -335,7 +337,7 @@ export default function AddLeadPage() {
 
       if (existingLead) {
         if (process.env.NODE_ENV === 'development') {
-          console.log('🎉 useEffect: Auto-populating client name:', existingLead.clientName);
+          logger.info('🎉 useEffect: Auto-populating client name:', existingLead.clientName);
         }
         setCustomFields(prev => ({
           ...prev,
@@ -343,7 +345,7 @@ export default function AddLeadPage() {
         }));
       } else {
         if (process.env.NODE_ENV === 'development') {
-          console.log('❌ useEffect: No matching lead found for mobile:', formData.mobileNumbers[0].number);
+          logger.info('❌ useEffect: No matching lead found for mobile:', formData.mobileNumbers[0].number);
         }
       }
     }
@@ -366,8 +368,8 @@ export default function AddLeadPage() {
   // Debug logging for mobile numbers display
   useEffect(() => {
     if (isEditMode && process.env.NODE_ENV === 'development') {
-      console.log('Mobile numbers in formData:', formData.mobileNumbers);
-      console.log('Mobile numbers display check:', formData.mobileNumbers.map(m => ({ id: m.id, number: m.number, name: m.name })));
+      logger.info('Mobile numbers in formData:', formData.mobileNumbers);
+      logger.info('Mobile numbers display check:', formData.mobileNumbers.map(m => ({ id: m.id, number: m.number, name: m.name })));
     }
   }, [formData.mobileNumbers, isEditMode]);
 
@@ -378,15 +380,15 @@ export default function AddLeadPage() {
       if (storedLead) {
         try {
           const leadData = JSON.parse(storedLead);
-          console.log('🔍 FORCE LOADING MOBILE NUMBERS:');
-          console.log('🔍 leadData.mobileNumbers:', leadData.mobileNumbers);
-          console.log('🔍 leadData.mobileNumber:', leadData.mobileNumber);
+          logger.info('🔍 FORCE LOADING MOBILE NUMBERS:');
+          logger.info('🔍 leadData.mobileNumbers:', leadData.mobileNumbers);
+          logger.info('🔍 leadData.mobileNumber:', leadData.mobileNumber);
 
           // Check if mobile numbers are empty and try to load them
           const hasEmptyNumbers = formData.mobileNumbers.every(m => !m.number || m.number.trim() === '');
 
           if (hasEmptyNumbers) {
-            console.log('🔍 Mobile numbers are empty, attempting to reload...');
+            logger.info('🔍 Mobile numbers are empty, attempting to reload...');
 
             const newMobileNumbers: MobileNumber[] = [
               { id: '1', number: '', name: '', isMain: true },
@@ -395,7 +397,7 @@ export default function AddLeadPage() {
             ];
 
             if (leadData.mobileNumbers && Array.isArray(leadData.mobileNumbers) && leadData.mobileNumbers.length > 0) {
-              console.log('🔍 Reloading from mobileNumbers array');
+              logger.info('🔍 Reloading from mobileNumbers array');
               leadData.mobileNumbers.forEach((mobile: any, index: number) => {
                 if (index < 3 && mobile && mobile.number) {
                   newMobileNumbers[index] = {
@@ -407,7 +409,7 @@ export default function AddLeadPage() {
                 }
               });
             } else if (leadData.mobileNumber && leadData.mobileNumber.trim() !== '') {
-              console.log('🔍 Reloading from mobileNumber field');
+              logger.info('🔍 Reloading from mobileNumber field');
               newMobileNumbers[0] = {
                 id: '1',
                 number: leadData.mobileNumber.trim(),
@@ -416,12 +418,12 @@ export default function AddLeadPage() {
               };
             }
 
-            console.log('🔍 New mobile numbers:', newMobileNumbers);
+            logger.info('🔍 New mobile numbers:', newMobileNumbers);
 
             // Only update if we found actual numbers
             const hasNumbers = newMobileNumbers.some(m => m.number && m.number.trim() !== '');
             if (hasNumbers) {
-              console.log('🔍 Updating formData with mobile numbers');
+              logger.info('🔍 Updating formData with mobile numbers');
               setFormData(prev => ({
                 ...prev,
                 mobileNumbers: newMobileNumbers
@@ -429,7 +431,7 @@ export default function AddLeadPage() {
             }
           }
         } catch (error) {
-          console.error('Error in mobile number force loading:', error);
+          logger.error('Error in mobile number force loading:', error);
         }
       }
     }
@@ -558,7 +560,7 @@ export default function AddLeadPage() {
     const numericValue = value.replace(/[^0-9]/g, '').slice(0, 10);
 
     if (process.env.NODE_ENV === 'development') {
-      console.log('🔍 Mobile number change:', { index, value, numericValue, leadsCount: leads.length });
+      logger.info('🔍 Mobile number change:', { index, value, numericValue, leadsCount: leads.length });
     }
 
     setFormData(prev => {
@@ -569,8 +571,8 @@ export default function AddLeadPage() {
       // Auto-detect client name from first mobile number if it's complete (10 digits)
       if (index === 0 && numericValue.length === 10 && !customFields.clientName?.trim()) {
         if (process.env.NODE_ENV === 'development') {
-          console.log('🎯 Auto-detection triggered for mobile:', numericValue);
-          console.log('📊 Available leads:', leads.length);
+          logger.info('🎯 Auto-detection triggered for mobile:', numericValue);
+          logger.info('📊 Available leads:', leads.length);
         }
 
         // Try to find existing lead with this mobile number
@@ -578,7 +580,7 @@ export default function AddLeadPage() {
           // Check main mobile number (backward compatibility)
           if (lead.mobileNumber && lead.mobileNumber.trim() === numericValue) {
             if (process.env.NODE_ENV === 'development') {
-              console.log('✅ Found match in main mobile number:', lead.clientName);
+              logger.info('✅ Found match in main mobile number:', lead.clientName);
             }
             return true;
           }
@@ -590,7 +592,7 @@ export default function AddLeadPage() {
             );
             if (hasMatch) {
               if (process.env.NODE_ENV === 'development') {
-                console.log('✅ Found match in mobile numbers array:', lead.clientName);
+                logger.info('✅ Found match in mobile numbers array:', lead.clientName);
               }
               return true;
             }
@@ -601,7 +603,7 @@ export default function AddLeadPage() {
 
         if (existingLead) {
           if (process.env.NODE_ENV === 'development') {
-            console.log('🎉 Auto-populating client name:', existingLead.clientName);
+            logger.info('🎉 Auto-populating client name:', existingLead.clientName);
           }
 
           // Also auto-populate the first mobile number's name if it's empty
@@ -612,7 +614,7 @@ export default function AddLeadPage() {
           }
         } else {
           if (process.env.NODE_ENV === 'development') {
-            console.log('❌ No matching lead found for mobile:', numericValue);
+            logger.info('❌ No matching lead found for mobile:', numericValue);
           }
         }
       }
@@ -687,7 +689,7 @@ export default function AddLeadPage() {
         // Basic email validation
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(value)) {
-          console.warn(`Invalid email format for ${fieldKey}: ${value}`);
+          logger.warn(`Invalid email format for ${fieldKey}: ${value}`);
         }
       }
     }
@@ -865,7 +867,7 @@ export default function AddLeadPage() {
             localStorage.removeItem('modalReturnData');
             return;
           } catch (error) {
-            console.error('Error parsing modal return data:', error);
+            logger.error('Error parsing modal return data:', error);
             localStorage.removeItem('modalReturnData');
           }
         }
@@ -1054,7 +1056,7 @@ export default function AddLeadPage() {
       }
 
     } catch (error) {
-      console.error('Error saving lead:', error);
+      logger.error('Error saving lead:', error);
       alert('Error saving lead. Please try again.');
     } finally {
       setIsSubmitting(false);
@@ -1092,7 +1094,7 @@ export default function AddLeadPage() {
         localStorage.removeItem('modalReturnData');
         return;
       } catch (error) {
-        console.error('Error parsing modal return data:', error);
+        logger.error('Error parsing modal return data:', error);
         localStorage.removeItem('modalReturnData');
       }
     }
@@ -1132,49 +1134,49 @@ export default function AddLeadPage() {
 
   // Debug log to show current form data
   if (process.env.NODE_ENV === 'development') {
-    console.log('Current form data mobile numbers:', formData.mobileNumbers);
-    console.log('Available leads for auto-detection:', leads.length);
+    logger.info('Current form data mobile numbers:', formData.mobileNumbers);
+    logger.info('Available leads for auto-detection:', leads.length);
   }
 
   // Manual trigger for auto-detection (for first mobile number only)
   const triggerAutoDetection = () => {
-    console.log('🔧 Auto-Detect button clicked!');
-    console.log('📱 First mobile number:', formData.mobileNumbers[0]?.number);
-    console.log('📊 Available leads:', leads.length);
+    logger.info('🔧 Auto-Detect button clicked!');
+    logger.info('📱 First mobile number:', formData.mobileNumbers[0]?.number);
+    logger.info('📊 Available leads:', leads.length);
 
     // Check if first mobile number exists and is complete
     const firstMobileNumber = formData.mobileNumbers[0]?.number?.trim();
 
     if (!firstMobileNumber) {
-      console.log('❌ No mobile number entered in first contact box');
+      logger.info('❌ No mobile number entered in first contact box');
       return;
     }
 
     if (firstMobileNumber.length !== 10) {
-      console.log('❌ Mobile number is not complete (10 digits required)');
+      logger.info('❌ Mobile number is not complete (10 digits required)');
       return;
     }
 
-    console.log('🔍 Searching for mobile number:', firstMobileNumber);
+    logger.info('🔍 Searching for mobile number:', firstMobileNumber);
 
     // Search through all leads for matching mobile number
     const existingLead = leads.find(lead => {
-      console.log('🔍 Checking lead:', lead.clientName, 'with mobile:', lead.mobileNumber);
+      logger.info('🔍 Checking lead:', lead.clientName, 'with mobile:', lead.mobileNumber);
 
       // Check main mobile number (backward compatibility)
       if (lead.mobileNumber && lead.mobileNumber.trim() === firstMobileNumber) {
-        console.log('✅ Found match in main mobile number:', lead.clientName);
+        logger.info('✅ Found match in main mobile number:', lead.clientName);
         return true;
       }
 
       // Check mobile numbers array
       if (lead.mobileNumbers && Array.isArray(lead.mobileNumbers)) {
         const hasMatch = lead.mobileNumbers.some(m => {
-          console.log('🔍 Checking mobile in array:', m.number);
+          logger.info('🔍 Checking mobile in array:', m.number);
           return m.number && m.number.trim() === firstMobileNumber;
         });
         if (hasMatch) {
-          console.log('✅ Found match in mobile numbers array:', lead.clientName);
+          logger.info('✅ Found match in mobile numbers array:', lead.clientName);
           return true;
         }
       }
@@ -1183,7 +1185,7 @@ export default function AddLeadPage() {
     });
 
     if (existingLead) {
-      console.log('🎉 Auto-populating client name:', existingLead.clientName);
+      logger.info('🎉 Auto-populating client name:', existingLead.clientName);
       setFormData(prev => ({
         ...prev,
         clientName: existingLead.clientName
@@ -1199,9 +1201,9 @@ export default function AddLeadPage() {
         }));
       }
 
-      console.log('✅ Client name auto-detected:', existingLead.clientName);
+      logger.info('✅ Client name auto-detected:', existingLead.clientName);
     } else {
-      console.log('❌ No matching lead found for mobile:', firstMobileNumber);
+      logger.info('❌ No matching lead found for mobile:', firstMobileNumber);
     }
   };
 

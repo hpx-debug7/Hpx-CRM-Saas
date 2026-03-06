@@ -1,3 +1,4 @@
+import { logger } from '@/lib/client/logger';
 import { Lead } from '../types/shared';
 
 // Column order for display - defines the sequence of columns in the table
@@ -19,7 +20,7 @@ export const COLUMN_ORDER: (keyof Lead)[] = [
 export const getColumnOrder = (): (keyof Lead)[] => {
   // This function should be called from ColumnContext to get current column order
   // For now, return the static COLUMN_ORDER as fallback
-  console.warn('getColumnOrder() called from constants - consider using ColumnContext.getVisibleColumns() instead');
+  logger.warn('getColumnOrder() called from constants - consider using ColumnContext.getVisibleColumns() instead');
   return COLUMN_ORDER;
 };
 

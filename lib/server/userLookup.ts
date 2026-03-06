@@ -1,6 +1,6 @@
 'use server';
 
-import { prisma } from '@/lib/db';
+import { prisma } from '@/lib/server/db';
 
 /**
  * SECURE USER LOOKUP HELPERS
@@ -21,14 +21,14 @@ import { prisma } from '@/lib/db';
  * Throws if email not found or multiple matches (should not happen).
  */
 export async function findUserByEmail(email: string) {
-    return await prisma.user.findFirstOrThrow({
-        where: {
-            email: email.toLowerCase(),
-        },
-        include: {
-            company: true,
-        },
-    });
+  return await prisma.user.findFirstOrThrow({
+    where: {
+      email: email.toLowerCase(),
+    },
+    include: {
+      company: true,
+    },
+  });
 }
 
 /**
@@ -36,20 +36,20 @@ export async function findUserByEmail(email: string) {
  * Must know the company to avoid ambiguous lookups.
  */
 export async function findUserByUsernameInCompany(
-    username: string,
-    companyId: string,
+  username: string,
+  companyId: string,
 ) {
-    return await prisma.user.findUnique({
-        where: {
-            username_companyId: {
-                username: username.toLowerCase(),
-                companyId,
-            },
-        },
-        include: {
-            company: true,
-        },
-    });
+  return await prisma.user.findUnique({
+    where: {
+      companyId_username: {
+        username: username.toLowerCase(),
+        companyId,
+      },
+    },
+    include: {
+      company: true,
+    },
+  });
 }
 
 /**
@@ -57,20 +57,20 @@ export async function findUserByUsernameInCompany(
  * More secure than global email lookup.
  */
 export async function findUserByEmailInCompany(
-    email: string,
-    companyId: string,
+  email: string,
+  companyId: string,
 ) {
-    return await prisma.user.findUnique({
-        where: {
-            email_companyId: {
-                email: email.toLowerCase(),
-                companyId,
-            },
-        },
-        include: {
-            company: true,
-        },
-    });
+  return await prisma.user.findUnique({
+    where: {
+      companyId_email: {
+        email: email.toLowerCase(),
+        companyId,
+      },
+    },
+    include: {
+      company: true,
+    },
+  });
 }
 
 /**

@@ -1,5 +1,7 @@
 'use client';
 
+
+import { logger } from '@/lib/client/logger';
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import type { Lead, LeadFilters } from '../types/shared';
 import LeadTable from './LeadTable';
@@ -105,7 +107,7 @@ const EditableTable: React.FC<EditableTableProps> = ({
           setIsStickyEnabled(data.preferences.stickyLeadTableHeader);
         }
       } catch (error) {
-        console.error('Failed to load user preferences:', error);
+        logger.error('Failed to load user preferences:', error);
       }
     };
 
@@ -131,7 +133,7 @@ const EditableTable: React.FC<EditableTableProps> = ({
       if (!response.ok) {
         const payload = await response.json().catch(() => ({}));
         setIsStickyEnabled(previousValue);
-        console.warn(payload?.error || `Failed to save sticky header preference (${response.status})`);
+        logger.warn(payload?.error || `Failed to save sticky header preference (${response.status})`);
         return;
       }
 
@@ -140,7 +142,7 @@ const EditableTable: React.FC<EditableTableProps> = ({
         setIsStickyEnabled(data.preferences.stickyLeadTableHeader);
       }
     } catch (error) {
-      console.warn('Failed to save sticky header preference:', error);
+      logger.warn('Failed to save sticky header preference:', error);
       setIsStickyEnabled(previousValue);
     } finally {
       setIsSavingStickyPreference(false);
@@ -221,7 +223,7 @@ const EditableTable: React.FC<EditableTableProps> = ({
       }, 2000);
     } catch (error) {
       setSaveStatus('error');
-      console.error('Error updating cell:', error);
+      logger.error('Error updating cell:', error);
 
       // Auto-hide error status after 3 seconds
       setTimeout(() => {

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
+import { prisma } from '@/lib/server/db';
 import { requireAuth } from '@/app/actions/auth';
 import { getAccountForUser, sendEmailForAccount } from '@/app/lib/email/emailService';
 import { addServerAuditLog } from '@/app/actions/audit';
@@ -30,6 +30,7 @@ export async function POST(req: Request) {
 
     await prisma.emailSendAudit.create({
       data: {
+        companyId: session.companyId,
         userId: session.userId,
         provider: account.provider,
         to: payload.to.join(', '),

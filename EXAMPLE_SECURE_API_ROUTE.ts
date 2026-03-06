@@ -16,8 +16,8 @@
 'use server';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { secureHandler } from '@/lib/secureHandler';
-import { tenantScope } from '@/lib/tenantScope';
+import { secureHandler } from '@/lib/server/secureHandler';
+import { tenantScope } from '@/lib/server/tenantScope';
 
 // ============================================================================
 // GET /api/leads - List all leads for the current company

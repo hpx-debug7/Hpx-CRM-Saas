@@ -1,5 +1,6 @@
-﻿'use client';
+'use client';
 
+import { logger } from '@/lib/client/logger';
 import React, { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
 import { useLeads } from '../context/LeadContext';
 import type { Lead, LeadFilters } from '../types/shared';
@@ -97,7 +98,7 @@ export default function DashboardPage() {
       const columnConfig = visibleColumns.find(col => col.fieldKey === field);
 
       if (process.env.NODE_ENV === 'development') {
-        console.log('🔧 Cell update debug:', { leadId, field, value, columnConfig });
+        logger.info('?? Cell update debug:', { leadId, field, value, columnConfig });
       }
 
       // Validate the field (including custom columns)
@@ -174,7 +175,7 @@ export default function DashboardPage() {
 
       showToastNotification('Lead updated successfully!', 'success');
     } catch (error) {
-      console.error('Error updating cell:', error);
+      logger.error('Error updating cell:', error);
       showToastNotification(error instanceof Error ? error.message : 'Failed to update lead', 'error');
       throw error;
     }
@@ -204,7 +205,7 @@ export default function DashboardPage() {
     const currentColumnCount = getVisibleColumns().length;
     if (currentColumnCount !== columnCount) {
       if (process.env.NODE_ENV === 'development') {
-        console.log('🔄 Column count changed:', columnCount, '->', currentColumnCount);
+        logger.info('?? Column count changed:', columnCount, '->', currentColumnCount);
       }
       setColumnCount(currentColumnCount);
 
@@ -212,12 +213,12 @@ export default function DashboardPage() {
       // This ensures the table completely re-mounts with new column configuration
       const tableKey = `table-${currentColumnCount}-${Date.now()}`;
       if (process.env.NODE_ENV === 'development') {
-        console.log('🔄 Forcing table re-mount with key:', tableKey);
+        logger.info('?? Forcing table re-mount with key:', tableKey);
       }
 
       // Force re-render by updating a dummy state
       if (process.env.NODE_ENV === 'development') {
-        console.log('🔄 Table re-mounted with', currentColumnCount, 'columns');
+        logger.info('?? Table re-mounted with', currentColumnCount, 'columns');
       }
 
       // Clear any validation errors that might be stale
@@ -264,7 +265,7 @@ export default function DashboardPage() {
 
       // Don't automatically set status filter - let user see all leads by default
       if (process.env.NODE_ENV === 'development') {
-        console.log('✅ Lead added notification received, dashboard will show all leads');
+        logger.info('? Lead added notification received, dashboard will show all leads');
       }
     }
   }, [showToastNotification]);
@@ -285,7 +286,7 @@ export default function DashboardPage() {
       // This ensures updated leads are removed from the main dashboard view
       // but allows users to still click status buttons to see updated leads
       if (process.env.NODE_ENV === 'development') {
-        console.log('Clearing main dashboard view due to updated leads');
+        logger.info('Clearing main dashboard view due to updated leads');
       }
     }
   }, [leads.length, activeFiltersKey]);
@@ -363,14 +364,14 @@ export default function DashboardPage() {
             ? { ...prev, status: parsedStatus }
             : prev);
           if (process.env.NODE_ENV === 'development') {
-            console.log('🔄 Restored filter state:', parsedStatus);
+            logger.info('?? Restored filter state:', parsedStatus);
           }
           // Clean up after restoration
           localStorage.removeItem('dashboardFilterState');
         }
       }
     } catch (error) {
-      console.error('Error restoring filter state:', error);
+      logger.error('Error restoring filter state:', error);
       // Clean up corrupted data
       localStorage.removeItem('dashboardFilterState');
     }
@@ -510,9 +511,9 @@ export default function DashboardPage() {
     };
 
     if (process.env.NODE_ENV === 'development') {
-      console.log('=== STATUS COUNTS DEBUG ===');
-      console.log('Total leads:', leads.length);
-      console.log('Current activeFilters:', activeFilters);
+      logger.info('=== STATUS COUNTS DEBUG ===');
+      logger.info('Total leads:', leads.length);
+      logger.info('Current activeFilters:', activeFilters);
     }
 
     // Create a temporary filter object that excludes status filtering to get leads for status counts
@@ -530,12 +531,12 @@ export default function DashboardPage() {
     }
 
     if (process.env.NODE_ENV === 'development') {
-      console.log('Filtered leads for status counts:', filteredLeadsForCounts.length);
+      logger.info('Filtered leads for status counts:', filteredLeadsForCounts.length);
     }
 
     filteredLeadsForCounts.forEach(lead => {
       if (process.env.NODE_ENV === 'development') {
-        console.log(`Lead ${lead.kva}: status="${lead.status}", discom="${lead.discom}"`);
+        logger.info(`Lead ${lead.kva}: status="${lead.status}", discom="${lead.discom}"`);
       }
       // Map Work Alloted to WAO and Fresh Lead to FL1 for counting
       const statusKey = lead.status === 'Work Alloted' ? 'WAO'
@@ -544,18 +545,18 @@ export default function DashboardPage() {
       if (statusKey in counts) {
         counts[statusKey as keyof typeof counts]++;
         if (process.env.NODE_ENV === 'development') {
-          console.log(`✅ Incremented count for status: ${statusKey} (original: ${lead.status})`);
+          logger.info(`? Incremented count for status: ${statusKey} (original: ${lead.status})`);
         }
       } else {
         if (process.env.NODE_ENV === 'development') {
-          console.log(`❌ Status key "${statusKey}" not found in counts object`);
+          logger.info(`? Status key "${statusKey}" not found in counts object`);
         }
       }
     });
 
     if (process.env.NODE_ENV === 'development') {
-      console.log('Final status counts:', counts);
-      console.log('=== END STATUS COUNTS DEBUG ===');
+      logger.info('Final status counts:', counts);
+      logger.info('=== END STATUS COUNTS DEBUG ===');
     }
 
     return counts;
@@ -658,8 +659,8 @@ export default function DashboardPage() {
       // Use fresh column configuration to ensure latest columns are included
       const visibleColumns = getVisibleColumns();
       if (process.env.NODE_ENV === 'development') {
-        console.log('📊 Export Debug - Using columns:', visibleColumns.map(c => c.label));
-        console.log('📊 Export Debug - Column types:', visibleColumns.map(c => ({ label: c.label, type: c.type, fieldKey: c.fieldKey })));
+        logger.info('?? Export Debug - Using columns:', visibleColumns.map(c => c.label));
+        logger.info('?? Export Debug - Column types:', visibleColumns.map(c => ({ label: c.label, type: c.type, fieldKey: c.fieldKey })));
       }
       const headers = visibleColumns.map(column => column.label);
 
@@ -672,7 +673,7 @@ export default function DashboardPage() {
         // Format main mobile number (phone number only, no contact name)
         const mainMobileDisplay = mainMobile.number || '';
         if (process.env.NODE_ENV === 'development') {
-          console.log('🔍 Export Debug - Lead:', lead.clientName, 'Main Mobile:', mainMobileDisplay);
+          logger.info('?? Export Debug - Lead:', lead.clientName, 'Main Mobile:', mainMobileDisplay);
         }
 
         // Map data according to visible columns using safe property access
@@ -681,7 +682,7 @@ export default function DashboardPage() {
           const value = (lead as any)[fieldKey] ?? '';
 
           if (process.env.NODE_ENV === 'development') {
-            console.log(`🔍 Export Debug - Field: ${fieldKey}, Value: ${value}, Type: ${column.type}`);
+            logger.info(`?? Export Debug - Field: ${fieldKey}, Value: ${value}, Type: ${column.type}`);
           }
 
           // Handle special field formatting
@@ -735,7 +736,7 @@ export default function DashboardPage() {
       setShowExportPasswordModal(false);
       showToastNotification(`Successfully exported ${leadsToExport.length} leads to Excel format`, 'success');
     } catch (error) {
-      console.error('Export error:', error);
+      logger.error('Export error:', error);
       showToastNotification('Failed to export leads. Please try again.', 'error');
     }
   };
@@ -981,7 +982,7 @@ export default function DashboardPage() {
         const parsedOrder = JSON.parse(savedOrder);
         setStatusOrder(parsedOrder);
       } catch (error) {
-        console.error('Error parsing saved button order:', error);
+        logger.error('Error parsing saved button order:', error);
       }
     }
   }, []);
@@ -1193,7 +1194,7 @@ export default function DashboardPage() {
                     onDrop={(e) => handleDrop(e, status)}
                     onDragEnd={handleDragEnd}
                     className={styles.buttonClasses}
-                    title={`Drag to reorder • Click to filter ${status} leads`}
+                    title={`Drag to reorder � Click to filter ${status} leads`}
                   >
                     {status}
                     <span className={styles.badgeClasses}>
@@ -1275,7 +1276,7 @@ export default function DashboardPage() {
                           <div className="flex items-center justify-between">
                             <div className="flex-1">
                               <div className="font-medium text-black">{lead.kva}</div>
-                              <div className="text-xs text-black">{lead.company} • {lead.clientName}</div>
+                              <div className="text-xs text-black">{lead.company} � {lead.clientName}</div>
                             </div>
                             <div className="ml-2">
                               <span className="inline-flex px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
@@ -1480,33 +1481,33 @@ export default function DashboardPage() {
               onColumnAdded={(column) => {
                 // Handle column addition
                 if (process.env.NODE_ENV === 'development') {
-                  console.log('Column added:', column);
+                  logger.info('Column added:', column);
                 }
                 showToastNotification(`Column "${column.label}" added successfully!`, 'success');
               }}
               onColumnDeleted={(fieldKey) => {
                 // Handle column deletion
                 if (process.env.NODE_ENV === 'development') {
-                  console.log('Column deleted:', fieldKey);
+                  logger.info('Column deleted:', fieldKey);
                 }
                 showToastNotification('Column deleted successfully!', 'success');
               }}
               onColumnReorder={(newOrder) => {
                 // Handle column reordering
                 if (process.env.NODE_ENV === 'development') {
-                  console.log('Columns reordered:', newOrder);
+                  logger.info('Columns reordered:', newOrder);
                 }
               }}
               onRowsAdded={(count) => {
                 // Handle row addition
                 if (process.env.NODE_ENV === 'development') {
-                  console.log('Rows added:', count);
+                  logger.info('Rows added:', count);
                 }
               }}
               onRowsDeleted={(count) => {
                 // Handle row deletion
                 if (process.env.NODE_ENV === 'development') {
-                  console.log('Rows deleted:', count);
+                  logger.info('Rows deleted:', count);
                 }
               }}
             />

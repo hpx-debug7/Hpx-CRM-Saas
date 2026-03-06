@@ -1,5 +1,7 @@
 'use client';
 
+
+import { logger } from '@/lib/client/logger';
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef, ReactNode } from 'react';
 import {
     CaseDocument,
@@ -79,7 +81,7 @@ export function DocumentProvider({ children }: { children: ReactNode }) {
                 );
             }
         } catch (error) {
-            console.error('Error loading documents:', error);
+            logger.error('Error loading documents:', error);
         } finally {
             setIsHydrated(true);
         }
@@ -97,7 +99,7 @@ export function DocumentProvider({ children }: { children: ReactNode }) {
                 persistDocumentsSafely(documents);
                 lastPersistedValueRef.current = JSON.stringify(docsForStorage);
             } catch (error) {
-                console.error('Error saving documents:', error);
+                logger.error('Error saving documents:', error);
             }
         }, 300);
 

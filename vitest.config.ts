@@ -18,6 +18,7 @@ export default defineConfig({
         alias: {
             '@': path.resolve(__dirname, './'),
             '.prisma/client': path.resolve(__dirname, './node_modules/.prisma/client'),
+            'server-only': path.resolve(__dirname, './__tests__/mocks/server-only.js'),
         },
     },
 });

@@ -1,5 +1,7 @@
 'use client';
 
+
+import { logger } from '@/lib/client/logger';
 import React, { useState, useEffect } from 'react';
 import { hasEmployeeName } from '../utils/employeeStorage';
 import EmployeeSetupModal from './EmployeeSetupModal';
@@ -46,7 +48,7 @@ const EmployeeSetupWrapper: React.FC<EmployeeSetupWrapperProps> = ({ children })
         isEnabled={!showSetup && hasEmployeeName()}
         idleThreshold={5}
         onIdleDetected={() => {
-          console.log('User idle detected');
+          logger.info('User idle detected');
         }}
       />
       

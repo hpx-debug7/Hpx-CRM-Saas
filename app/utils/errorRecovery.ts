@@ -3,6 +3,7 @@
  * Provides structured error recovery for various failure scenarios
  */
 
+import { logger } from '@/lib/client/logger';
 import { storageErrorLogger } from './storageErrorLogger';
 import { storageNotifications } from './storageNotifications';
 import { restoreFromBackup, hasBackup, repairCorruptedLeads, repairColumnConfig, getItem, setItem } from './storage';
@@ -48,7 +49,7 @@ export async function recoverFromStorageError(key: string, error: Error): Promis
         };
       }
     }
-    
+
     // Try to clear corrupted data
     try {
       localStorage.removeItem(key);
@@ -66,7 +67,7 @@ export async function recoverFromStorageError(key: string, error: Error): Promis
         error: clearError.message
       };
     }
-    
+
   } catch (recoveryError) {
     return {
       success: false,
@@ -92,7 +93,7 @@ export async function recoverFromValidationError(data: any, validator: Function)
         data: repairedData
       };
     }
-    
+
     // Try removing invalid fields
     const cleanedData = removeInvalidFields(data, validator);
     if (cleanedData) {
@@ -103,7 +104,7 @@ export async function recoverFromValidationError(data: any, validator: Function)
         data: cleanedData
       };
     }
-    
+
     // Use default values
     const defaultData = getDefaultData(data);
     return {
@@ -112,7 +113,7 @@ export async function recoverFromValidationError(data: any, validator: Function)
       message: 'Using default values for corrupted data',
       data: defaultData
     };
-    
+
   } catch (error) {
     return {
       success: false,
@@ -129,7 +130,7 @@ export async function recoverFromValidationError(data: any, validator: Function)
 export async function recoverFromQuotaError(key: string): Promise<RecoveryResult> {
   try {
     let freedSpace = 0;
-    
+
     // Try clearing cache first
     const cacheKeys = Object.keys(localStorage).filter(k => k.includes('cache') || k.includes('temp'));
     for (const cacheKey of cacheKeys) {
@@ -137,7 +138,7 @@ export async function recoverFromQuotaError(key: string): Promise<RecoveryResult
       localStorage.removeItem(cacheKey);
       freedSpace += size;
     }
-    
+
     if (freedSpace > 0) {
       return {
         success: true,
@@ -146,7 +147,7 @@ export async function recoverFromQuotaError(key: string): Promise<RecoveryResult
         data: { freedSpace }
       };
     }
-    
+
     // Try removing old backups
     const backupKeys = Object.keys(localStorage).filter(k => k.includes('backup'));
     for (const backupKey of backupKeys) {
@@ -154,7 +155,7 @@ export async function recoverFromQuotaError(key: string): Promise<RecoveryResult
       localStorage.removeItem(backupKey);
       freedSpace += size;
     }
-    
+
     if (freedSpace > 0) {
       return {
         success: true,
@@ -163,14 +164,14 @@ export async function recoverFromQuotaError(key: string): Promise<RecoveryResult
         data: { freedSpace }
       };
     }
-    
+
     return {
       success: false,
       strategy: RecoveryStrategy.CLEAR_CACHE,
       message: 'Unable to free sufficient storage space',
       error: 'Storage quota exceeded and no cache/backup data to clear'
     };
-    
+
   } catch (error) {
     return {
       success: false,
@@ -185,11 +186,11 @@ export async function recoverFromQuotaError(key: string): Promise<RecoveryResult
  * Retries failed operations with exponential backoff
  */
 export async function recoverFromNetworkError(
-  operation: Function, 
+  operation: Function,
   maxRetries: number = 3
 ): Promise<RecoveryResult> {
   let lastError: Error | null = null;
-  
+
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       const result = await operation();
@@ -201,7 +202,7 @@ export async function recoverFromNetworkError(
       };
     } catch (error) {
       lastError = error as Error;
-      
+
       if (attempt < maxRetries) {
         // Exponential backoff: 1s, 2s, 4s
         const delay = Math.pow(2, attempt - 1) * 1000;
@@ -209,7 +210,7 @@ export async function recoverFromNetworkError(
       }
     }
   }
-  
+
   return {
     success: false,
     strategy: RecoveryStrategy.RETRY_OPERATION,
@@ -234,10 +235,10 @@ export async function recoverFromCorruptedData(key: string, schema: any): Promis
           error: dataResult.error || 'Unknown error'
         };
       }
-      
+
       // Repair the corrupted data
       const repairedData = repairCorruptedLeads(dataResult.data);
-      
+
       // Save repaired data back
       const saveResult = await setItem(key, repairedData);
       if (!saveResult.success) {
@@ -248,7 +249,7 @@ export async function recoverFromCorruptedData(key: string, schema: any): Promis
           error: saveResult.error
         };
       }
-      
+
       return {
         success: true,
         strategy: RecoveryStrategy.REPAIR_DATA,
@@ -256,7 +257,7 @@ export async function recoverFromCorruptedData(key: string, schema: any): Promis
         data: repairedData
       };
     }
-    
+
     if (key === 'columns') {
       // Get corrupted data from storage
       const dataResult = await getItem(key, []);
@@ -268,10 +269,10 @@ export async function recoverFromCorruptedData(key: string, schema: any): Promis
           error: dataResult.error || 'Unknown error'
         };
       }
-      
+
       // Repair the corrupted data
       const repairedData = repairColumnConfig(dataResult.data);
-      
+
       // Save repaired data back
       const saveResult = await setItem(key, repairedData);
       if (!saveResult.success) {
@@ -282,7 +283,7 @@ export async function recoverFromCorruptedData(key: string, schema: any): Promis
           error: saveResult.error
         };
       }
-      
+
       return {
         success: true,
         strategy: RecoveryStrategy.REPAIR_DATA,
@@ -290,14 +291,14 @@ export async function recoverFromCorruptedData(key: string, schema: any): Promis
         data: repairedData
       };
     }
-    
+
     return {
       success: false,
       strategy: RecoveryStrategy.REPAIR_DATA,
       message: `No repair strategy available for ${key}`,
       error: 'Unknown data type'
     };
-    
+
   } catch (error) {
     return {
       success: false,
@@ -313,7 +314,7 @@ export async function recoverFromCorruptedData(key: string, schema: any): Promis
  */
 export function getRecoveryOptions(error: Error): RecoveryOption[] {
   const options: RecoveryOption[] = [];
-  
+
   // Storage quota error
   if (error.name === 'QuotaExceededError' || error.message.includes('quota')) {
     options.push({
@@ -323,7 +324,7 @@ export function getRecoveryOptions(error: Error): RecoveryOption[] {
       severity: 'high'
     });
   }
-  
+
   // JSON parse error
   if (error.message.includes('JSON') || error.message.includes('parse')) {
     options.push({
@@ -353,7 +354,7 @@ export function getRecoveryOptions(error: Error): RecoveryOption[] {
       severity: 'medium'
     });
   }
-  
+
   // Network/API error
   if (error.message.includes('fetch') || error.message.includes('network')) {
     options.push({
@@ -363,7 +364,7 @@ export function getRecoveryOptions(error: Error): RecoveryOption[] {
       severity: 'low'
     });
   }
-  
+
   // Generic recovery options
   options.push({
     label: 'Clear Corrupted Data',
@@ -376,7 +377,7 @@ export function getRecoveryOptions(error: Error): RecoveryOption[] {
     }),
     severity: 'high'
   });
-  
+
   return options;
 }
 
@@ -387,11 +388,11 @@ export async function executeRecoveryStrategy(strategy: RecoveryStrategy, contex
   try {
     // Log recovery strategy execution (informational)
     if (process.env.NODE_ENV === 'development') {
-      console.log(`[RECOVERY] Executing recovery strategy: ${strategy}`, context);
+      logger.info(`[RECOVERY] Executing recovery strategy: ${strategy}`, context);
     }
-    
+
     let result: RecoveryResult;
-    
+
     switch (strategy) {
       case RecoveryStrategy.RESTORE_BACKUP:
         result = await recoverFromStorageError(context.key || '', new Error('Backup restore requested'));
@@ -424,16 +425,16 @@ export async function executeRecoveryStrategy(strategy: RecoveryStrategy, contex
           error: 'Invalid strategy provided'
         };
     }
-    
+
     // Show notification based on result
     if (result.success) {
       storageNotifications.notify(result.message, 'success');
     } else {
       storageNotifications.notify(result.message, 'error');
     }
-    
+
     return result;
-    
+
   } catch (error) {
     const result = {
       success: false,
@@ -441,9 +442,9 @@ export async function executeRecoveryStrategy(strategy: RecoveryStrategy, contex
       message: 'Recovery strategy execution failed',
       error: error.message
     };
-    
+
     storageNotifications.notify(result.message, 'error');
-    
+
     return result;
   }
 }
@@ -454,16 +455,16 @@ async function attemptAutoRepair(data: any, validator: Function): Promise<any> {
   // Simple auto-repair logic - can be enhanced based on specific validation rules
   if (typeof data === 'object' && data !== null) {
     const repaired = { ...data };
-    
+
     // Fix common issues
     if (repaired.id && typeof repaired.id !== 'string') {
       repaired.id = String(repaired.id);
     }
-    
+
     if (repaired.createdAt && !repaired.createdAt.match(/^\d{4}-\d{2}-\d{2}/)) {
       repaired.createdAt = new Date().toISOString();
     }
-    
+
     // Validate repaired data
     try {
       validator(repaired);
@@ -472,7 +473,7 @@ async function attemptAutoRepair(data: any, validator: Function): Promise<any> {
       return null;
     }
   }
-  
+
   return null;
 }
 
@@ -480,10 +481,10 @@ function removeInvalidFields(data: any, validator: Function): any {
   if (typeof data !== 'object' || data === null) {
     return null;
   }
-  
+
   const cleaned = { ...data };
   const requiredFields = ['id']; // Add more required fields as needed
-  
+
   // Remove fields that cause validation errors
   for (const field of Object.keys(cleaned)) {
     try {
@@ -495,7 +496,7 @@ function removeInvalidFields(data: any, validator: Function): any {
       // Field is required, keep it
     }
   }
-  
+
   return cleaned;
 }
 
@@ -503,7 +504,7 @@ function getDefaultData(originalData: any): any {
   if (Array.isArray(originalData)) {
     return [];
   }
-  
+
   if (typeof originalData === 'object' && originalData !== null) {
     return {
       id: `default_${Date.now()}`,
@@ -511,6 +512,6 @@ function getDefaultData(originalData: any): any {
       updatedAt: new Date().toISOString()
     };
   }
-  
+
   return null;
 }

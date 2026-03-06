@@ -1,7 +1,7 @@
-import { env } from '@/lib/env';
+import { logger } from '@/lib/server/logger';
 
-const WS_PUBLISH_URL = env.WS_PUBLISH_URL;
-const WS_PUBLISH_SECRET = env.WS_PUBLISH_SECRET;
+const WS_PUBLISH_URL = process.env.WS_PUBLISH_URL || '';
+const WS_PUBLISH_SECRET = process.env.WS_PUBLISH_SECRET;
 
 export async function publishEmailEvent(
   userId: string,
@@ -9,7 +9,7 @@ export async function publishEmailEvent(
   data: Record<string, unknown>
 ): Promise<void> {
   if (!WS_PUBLISH_SECRET) {
-    console.warn('WS_PUBLISH_SECRET is not set; skipping WS publish');
+    logger.warn('WS_PUBLISH_SECRET is not set; skipping WS publish');
     return;
   }
 
@@ -29,6 +29,6 @@ export async function publishEmailEvent(
       body: JSON.stringify(payload),
     });
   } catch (error) {
-    console.error('Failed to publish WS event:', error);
+    logger.error('Failed to publish WS event:', error);
   }
 }

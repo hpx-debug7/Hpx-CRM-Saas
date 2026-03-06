@@ -1,4 +1,4 @@
-import { prisma } from '@/lib/db';
+import { prisma } from '@/lib/server/db';
 
 export interface EmailQueueItem {
   id: string;
@@ -36,6 +36,7 @@ export class EmailQueueService {
    * Create a draft email
    */
   static async draft(
+    companyId: string,
     userId: string,
     to: string,
     subject: string,
@@ -50,6 +51,7 @@ export class EmailQueueService {
   ): Promise<EmailQueueItem> {
     const email = await prisma.emailQueue.create({
       data: {
+        companyId,
         userId,
         to,
         subject,
@@ -337,7 +339,7 @@ export class EmailQueueService {
     const averageRetries =
       allItems.length > 0
         ? allItems.reduce((sum, item) => sum + item.retryCount, 0) /
-          allItems.length
+        allItems.length
         : 0;
 
     return {

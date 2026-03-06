@@ -1,5 +1,7 @@
 'use client';
 
+
+import { logger } from '@/lib/client/logger';
 import React, { useState, useMemo, useRef, useEffect, useCallback, lazy, Suspense, startTransition } from 'react';
 import { useLeads } from '../context/LeadContext';
 import type { Lead } from '../types/shared';
@@ -119,13 +121,13 @@ export default function AllLeadsPage() {
         Object.entries(parsedMappings).forEach(([excelHeader, systemField]) => {
           dynamicMapping[normalizeHeader(excelHeader)] = systemField as keyof Lead;
           if (process.env.NODE_ENV === 'development') {
-            console.log(`📌 Applied saved mapping: '${excelHeader}' → '${systemField}'`);
+            logger.info(`📌 Applied saved mapping: '${excelHeader}' → '${systemField}'`);
           }
         });
       }
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
-        console.warn('Failed to load saved mappings:', error);
+        logger.warn('Failed to load saved mappings:', error);
       }
     }
 
@@ -362,15 +364,15 @@ export default function AllLeadsPage() {
 
     if (duplicates.length > 0) {
       if (process.env.NODE_ENV === 'development') {
-        console.warn('⚠️ Duplicate mappings detected:', duplicates);
+        logger.warn('⚠️ Duplicate mappings detected:', duplicates);
       }
     }
 
     if (process.env.NODE_ENV === 'development') {
       if (process.env.NODE_ENV === 'development') {
-        console.log('🔍 Dynamic field mapping built:', dynamicMapping);
-        console.log('🔍 Total mappings:', Object.keys(dynamicMapping).length);
-        console.log('🔍 Mobile number mappings:', Object.entries(mobileNumberMappings).length);
+        logger.info('🔍 Dynamic field mapping built:', dynamicMapping);
+        logger.info('🔍 Total mappings:', Object.keys(dynamicMapping).length);
+        logger.info('🔍 Mobile number mappings:', Object.entries(mobileNumberMappings).length);
       }
     }
     return dynamicMapping;
@@ -395,7 +397,7 @@ export default function AllLeadsPage() {
 
     if (fuzzyMatch) {
       if (process.env.NODE_ENV === 'development') {
-        console.log(`🔍 Fuzzy matched '${header}' to '${fuzzyMatch.match}' (score: ${Math.round(fuzzyMatch.score * 100)}%)`);
+        logger.info(`🔍 Fuzzy matched '${header}' to '${fuzzyMatch.match}' (score: ${Math.round(fuzzyMatch.score * 100)}%)`);
       }
       const fieldKey = dynamicMapping[fuzzyMatch.match];
       if (fieldKey) {
@@ -408,7 +410,7 @@ export default function AllLeadsPage() {
     }
 
     if (process.env.NODE_ENV === 'development') {
-      console.log(`❌ No mapping found for header '${header}' (exact or fuzzy)`);
+      logger.info(`❌ No mapping found for header '${header}' (exact or fuzzy)`);
     }
     return null;
   }, []);
@@ -458,7 +460,7 @@ export default function AllLeadsPage() {
       const cases = JSON.parse(casesJson);
       return cases.some((c: { leadId: string }) => c.leadId === leadId);
     } catch (e) {
-      console.error('Error checking lead case association:', e);
+      logger.error('Error checking lead case association:', e);
       return false;
     }
   }, []);
@@ -514,7 +516,7 @@ export default function AllLeadsPage() {
 
       if (process.env.NODE_ENV === 'development') {
         if (process.env.NODE_ENV === 'development') {
-          console.log('🔧 Cell update debug:', { leadId, field, value, columnConfig });
+          logger.info('🔧 Cell update debug:', { leadId, field, value, columnConfig });
         }
       }
 
@@ -574,7 +576,7 @@ export default function AllLeadsPage() {
       } : l));
       showToastNotification('Lead updated successfully!', 'success');
     } catch (error) {
-      console.error('Error updating cell:', error);
+      logger.error('Error updating cell:', error);
       showToastNotification(error instanceof Error ? error.message : 'Failed to update lead', 'error');
       throw error;
     }
@@ -909,12 +911,12 @@ export default function AllLeadsPage() {
     const inputType = typeof value;
 
     if (process.env.NODE_ENV === 'development') {
-      console.log('📅 Date conversion started:', { value: inputValue, type: inputType });
+      logger.info('📅 Date conversion started:', { value: inputValue, type: inputType });
     }
 
     if (!value) {
       if (process.env.NODE_ENV === 'development') {
-        console.log('📅 Empty value, returning empty string');
+        logger.info('📅 Empty value, returning empty string');
       }
       return '';
     }
@@ -923,13 +925,13 @@ export default function AllLeadsPage() {
     if (typeof value === 'string') {
       const trimmed = value.trim();
       if (process.env.NODE_ENV === 'development') {
-        console.log('📅 Processing string value:', trimmed);
+        logger.info('📅 Processing string value:', trimmed);
       }
 
       // Check if it's already in DD-MM-YYYY format
       if (trimmed.match(/^\d{2}-\d{2}-\d{4}$/)) {
         if (process.env.NODE_ENV === 'development') {
-          console.log('✅ Already in DD-MM-YYYY format:', trimmed);
+          logger.info('✅ Already in DD-MM-YYYY format:', trimmed);
         }
         return trimmed;
       } else if (trimmed.match(/^\d{4}-\d{2}-\d{2}$/)) {
@@ -940,7 +942,7 @@ export default function AllLeadsPage() {
         const day = parts[2];
         const converted = `${day}-${month}-${year}`;
         if (process.env.NODE_ENV === 'development') {
-          console.log(`✅ Converting YYYY-MM-DD: ${trimmed} → DD-MM-YYYY: ${converted}`);
+          logger.info(`✅ Converting YYYY-MM-DD: ${trimmed} → DD-MM-YYYY: ${converted}`);
         }
         return converted;
       } else if (trimmed.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/)) {
@@ -953,7 +955,7 @@ export default function AllLeadsPage() {
           const year = parts[2];
           const converted = `${day}-${month}-${year}`;
           if (process.env.NODE_ENV === 'development') {
-            console.log(`✅ Converting DD/MM/YYYY: ${trimmed} → DD-MM-YYYY: ${converted}`);
+            logger.info(`✅ Converting DD/MM/YYYY: ${trimmed} → DD-MM-YYYY: ${converted}`);
           }
           return converted;
         }
@@ -966,12 +968,12 @@ export default function AllLeadsPage() {
           const year = date.getFullYear();
           const converted = `${day}-${month}-${year}`;
           if (process.env.NODE_ENV === 'development') {
-            console.log(`✅ Converting parsed date: ${trimmed} → DD-MM-YYYY: ${converted}`);
+            logger.info(`✅ Converting parsed date: ${trimmed} → DD-MM-YYYY: ${converted}`);
           }
           return converted;
         }
         if (process.env.NODE_ENV === 'development') {
-          console.warn('⚠️ Date conversion failed for string value:', trimmed);
+          logger.warn('⚠️ Date conversion failed for string value:', trimmed);
         }
         return trimmed; // Return original if can't parse
       }
@@ -980,7 +982,7 @@ export default function AllLeadsPage() {
     // If it's a number (Excel serial date), convert it
     if (typeof value === 'number') {
       if (process.env.NODE_ENV === 'development') {
-        console.log('📅 Processing Excel serial number:', value);
+        logger.info('📅 Processing Excel serial number:', value);
       }
       // Excel serial date (days since 1900-01-01, but Excel incorrectly treats 1900 as leap year)
       const excelEpoch = new Date(1900, 0, 1);
@@ -994,19 +996,19 @@ export default function AllLeadsPage() {
         // Validate date components before formatting
         if (isNaN(day) || isNaN(month) || isNaN(year) || day < 1 || day > 31 || month < 1 || month > 12 || year < 1900) {
           if (process.env.NODE_ENV === 'development') {
-            console.warn('⚠️ Invalid date components:', { day, month, year });
+            logger.warn('⚠️ Invalid date components:', { day, month, year });
           }
           return '';
         }
 
         const converted = `${String(day).padStart(2, '0')}-${String(month).padStart(2, '0')}-${year}`;
         if (process.env.NODE_ENV === 'development') {
-          console.log(`✅ Converting Excel serial: ${value} → DD-MM-YYYY: ${converted}`);
+          logger.info(`✅ Converting Excel serial: ${value} → DD-MM-YYYY: ${converted}`);
         }
         return converted;
       } else {
         if (process.env.NODE_ENV === 'development') {
-          console.warn('⚠️ Invalid Excel serial date:', value);
+          logger.warn('⚠️ Invalid Excel serial date:', value);
         }
         return '';
       }
@@ -1015,13 +1017,13 @@ export default function AllLeadsPage() {
     // If it's a Date object
     if (value instanceof Date) {
       if (process.env.NODE_ENV === 'development') {
-        console.log('📅 Processing Date object:', value);
+        logger.info('📅 Processing Date object:', value);
       }
 
       // Validate date object
       if (isNaN(value.getTime())) {
         if (process.env.NODE_ENV === 'development') {
-          console.warn('⚠️ Invalid Date object');
+          logger.warn('⚠️ Invalid Date object');
         }
         return '';
       }
@@ -1033,20 +1035,20 @@ export default function AllLeadsPage() {
       // Validate date components before formatting
       if (isNaN(day) || isNaN(month) || isNaN(year) || day < 1 || day > 31 || month < 1 || month > 12 || year < 1900) {
         if (process.env.NODE_ENV === 'development') {
-          console.warn('⚠️ Invalid date components:', { day, month, year });
+          logger.warn('⚠️ Invalid date components:', { day, month, year });
         }
         return '';
       }
 
       const converted = `${String(day).padStart(2, '0')}-${String(month).padStart(2, '0')}-${year}`;
       if (process.env.NODE_ENV === 'development') {
-        console.log(`✅ Converting Date object → DD-MM-YYYY: ${converted}`);
+        logger.info(`✅ Converting Date object → DD-MM-YYYY: ${converted}`);
       }
       return converted;
     }
 
     if (process.env.NODE_ENV === 'development') {
-      console.error('❌ Date conversion failed - unsupported value type:', { value: inputValue, type: inputType });
+      logger.error('❌ Date conversion failed - unsupported value type:', { value: inputValue, type: inputType });
     }
     return '';
   };
@@ -1127,7 +1129,7 @@ export default function AllLeadsPage() {
     if (!lead.mobileNumbers) {
       lead.mobileNumbers = [];
       if (process.env.NODE_ENV === 'development') {
-        console.log('Initialized mobileNumbers array');
+        logger.info('Initialized mobileNumbers array');
       }
     }
 
@@ -1139,7 +1141,7 @@ export default function AllLeadsPage() {
         isMain: lead.mobileNumbers.length === 0
       });
       if (process.env.NODE_ENV === 'development') {
-        console.log('Added slot', lead.mobileNumbers.length, 'isMain:', lead.mobileNumbers[lead.mobileNumbers.length - 1]?.isMain);
+        logger.info('Added slot', lead.mobileNumbers.length, 'isMain:', lead.mobileNumbers[lead.mobileNumbers.length - 1]?.isMain);
       }
     }
 
@@ -1152,7 +1154,7 @@ export default function AllLeadsPage() {
         isMain: true
       };
       if (process.env.NODE_ENV === 'development') {
-        console.log('Added main mobile number to slot 0:', lead.mobileNumbers[0]);
+        logger.info('Added main mobile number to slot 0:', lead.mobileNumbers[0]);
       }
     }
   };
@@ -1162,12 +1164,12 @@ export default function AllLeadsPage() {
   const mapHeaderToField = (lead: Partial<Lead>, header: string, value: any) => {
     const headerLower = header.toLowerCase().trim();
     if (process.env.NODE_ENV === 'development') {
-      console.log('=== MAPPING DEBUG ===');
-      console.log('Header: "' + header + '" -> "' + headerLower + '"');
-      console.log('Value: "' + value + '" (type: ' + typeof value + ')');
-      console.log('Value length: ' + (value ? value.toString().length : 'undefined'));
-      console.log('Is empty: ' + (!value || value === '' || value === null || value === undefined));
-      console.log('Processing header: ' + headerLower);
+      logger.info('=== MAPPING DEBUG ===');
+      logger.info('Header: "' + header + '" -> "' + headerLower + '"');
+      logger.info('Value: "' + value + '" (type: ' + typeof value + ')');
+      logger.info('Value length: ' + (value ? value.toString().length : 'undefined'));
+      logger.info('Is empty: ' + (!value || value === '' || value === null || value === undefined));
+      logger.info('Processing header: ' + headerLower);
     }
 
     // First, try to map using dynamic field mapping (includes custom headers and columns)
@@ -1176,7 +1178,7 @@ export default function AllLeadsPage() {
 
     if (fieldKey) {
       if (process.env.NODE_ENV === 'development') {
-        console.log('🎯 DYNAMIC MAPPING FOUND:', headerLower, '->', fieldKey);
+        logger.info('🎯 DYNAMIC MAPPING FOUND:', headerLower, '->', fieldKey);
       }
 
       // Get column configuration for type-specific handling
@@ -1191,7 +1193,7 @@ export default function AllLeadsPage() {
           const dateValue = isExcelDate(value) ? convertExcelDate(value) : String(value);
           (lead as any)[fieldKey] = dateValue;
           if (process.env.NODE_ENV === 'development') {
-            console.log('Mapped date field:', fieldKey, '=', dateValue);
+            logger.info('Mapped date field:', fieldKey, '=', dateValue);
           }
         }
       } else if (columnConfig?.type === 'number') {
@@ -1201,12 +1203,12 @@ export default function AllLeadsPage() {
           if (!isNaN(numValue)) {
             (lead as any)[fieldKey] = numValue;
             if (process.env.NODE_ENV === 'development') {
-              console.log('Mapped number field:', fieldKey, '=', numValue);
+              logger.info('Mapped number field:', fieldKey, '=', numValue);
             }
           } else {
             (lead as any)[fieldKey] = String(value);
             if (process.env.NODE_ENV === 'development') {
-              console.log('Mapped number field as string:', fieldKey, '=', String(value));
+              logger.info('Mapped number field as string:', fieldKey, '=', String(value));
             }
           }
         }
@@ -1216,7 +1218,7 @@ export default function AllLeadsPage() {
           const phoneValue = String(value).replace(/[^0-9]/g, '');
           (lead as any)[fieldKey] = phoneValue;
           if (process.env.NODE_ENV === 'development') {
-            console.log('Mapped phone field:', fieldKey, '=', phoneValue);
+            logger.info('Mapped phone field:', fieldKey, '=', phoneValue);
           }
         }
       } else if (columnConfig?.type === 'email') {
@@ -1224,14 +1226,14 @@ export default function AllLeadsPage() {
         if (value && value !== '') {
           (lead as any)[fieldKey] = String(value).toLowerCase().trim();
           if (process.env.NODE_ENV === 'development') {
-            console.log('Mapped email field:', fieldKey, '=', String(value));
+            logger.info('Mapped email field:', fieldKey, '=', String(value));
           }
         }
       } else {
         // Handle other fields as strings
         (lead as any)[fieldKey] = String(value);
         if (process.env.NODE_ENV === 'development') {
-          console.log('Mapped field:', fieldKey, '=', String(value));
+          logger.info('Mapped field:', fieldKey, '=', String(value));
         }
       }
       return; // Exit early if mapping found
@@ -1241,7 +1243,7 @@ export default function AllLeadsPage() {
     const fuzzyMatch = fuzzyMatchHeader(header, dynamicMapping);
     if (fuzzyMatch) {
       if (process.env.NODE_ENV === 'development') {
-        console.log('🔍 FUZZY MAPPING FOUND:', headerLower, '->', fuzzyMatch.fieldKey, `(${fuzzyMatch.matchType}, score: ${Math.round(fuzzyMatch.score * 100)}%)`);
+        logger.info('🔍 FUZZY MAPPING FOUND:', headerLower, '->', fuzzyMatch.fieldKey, `(${fuzzyMatch.matchType}, score: ${Math.round(fuzzyMatch.score * 100)}%)`);
       }
 
       // Get column configuration for type-specific handling
@@ -1256,7 +1258,7 @@ export default function AllLeadsPage() {
           const dateValue = isExcelDate(value) ? convertExcelDate(value) : String(value);
           (lead as any)[fuzzyMatch.fieldKey] = dateValue;
           if (process.env.NODE_ENV === 'development') {
-            console.log('Mapped date field (fuzzy):', fuzzyMatch.fieldKey, '=', dateValue);
+            logger.info('Mapped date field (fuzzy):', fuzzyMatch.fieldKey, '=', dateValue);
           }
         }
       } else if (columnConfig?.type === 'number') {
@@ -1266,12 +1268,12 @@ export default function AllLeadsPage() {
           if (!isNaN(numValue)) {
             (lead as any)[fuzzyMatch.fieldKey] = numValue;
             if (process.env.NODE_ENV === 'development') {
-              console.log('Mapped number field (fuzzy):', fuzzyMatch.fieldKey, '=', numValue);
+              logger.info('Mapped number field (fuzzy):', fuzzyMatch.fieldKey, '=', numValue);
             }
           } else {
             (lead as any)[fuzzyMatch.fieldKey] = String(value);
             if (process.env.NODE_ENV === 'development') {
-              console.log('Mapped number field as string (fuzzy):', fuzzyMatch.fieldKey, '=', String(value));
+              logger.info('Mapped number field as string (fuzzy):', fuzzyMatch.fieldKey, '=', String(value));
             }
           }
         }
@@ -1281,7 +1283,7 @@ export default function AllLeadsPage() {
           const phoneValue = String(value).replace(/[^0-9]/g, '');
           (lead as any)[fuzzyMatch.fieldKey] = phoneValue;
           if (process.env.NODE_ENV === 'development') {
-            console.log('Mapped phone field (fuzzy):', fuzzyMatch.fieldKey, '=', phoneValue);
+            logger.info('Mapped phone field (fuzzy):', fuzzyMatch.fieldKey, '=', phoneValue);
           }
         }
       } else if (columnConfig?.type === 'email') {
@@ -1289,14 +1291,14 @@ export default function AllLeadsPage() {
         if (value && value !== '') {
           (lead as any)[fuzzyMatch.fieldKey] = String(value).toLowerCase().trim();
           if (process.env.NODE_ENV === 'development') {
-            console.log('Mapped email field (fuzzy):', fuzzyMatch.fieldKey, '=', String(value));
+            logger.info('Mapped email field (fuzzy):', fuzzyMatch.fieldKey, '=', String(value));
           }
         }
       } else {
         // Handle other fields as strings
         (lead as any)[fuzzyMatch.fieldKey] = String(value);
         if (process.env.NODE_ENV === 'development') {
-          console.log('Mapped field (fuzzy):', fuzzyMatch.fieldKey, '=', String(value));
+          logger.info('Mapped field (fuzzy):', fuzzyMatch.fieldKey, '=', String(value));
         }
       }
       return; // Exit early if fuzzy mapping found
@@ -1304,23 +1306,23 @@ export default function AllLeadsPage() {
 
     // If no dynamic mapping found, try legacy static mappings for backward compatibility
     if (process.env.NODE_ENV === 'development') {
-      console.log('⚠️ No dynamic mapping found, trying legacy mappings for:', headerLower);
+      logger.info('⚠️ No dynamic mapping found, trying legacy mappings for:', headerLower);
     }
 
     // Special handling for discom headers - check if header contains "discom" in any case
     if (headerLower.includes('discom')) {
       if (process.env.NODE_ENV === 'development') {
-        console.log('=== DISCOM HEADER DETECTED ===');
-        console.log('Original header:', header);
-        console.log('Header lowercase:', headerLower);
-        console.log('Value:', value);
-        console.log('Value type:', typeof value);
-        console.log('String value:', String(value));
+        logger.info('=== DISCOM HEADER DETECTED ===');
+        logger.info('Original header:', header);
+        logger.info('Header lowercase:', headerLower);
+        logger.info('Value:', value);
+        logger.info('Value type:', typeof value);
+        logger.info('String value:', String(value));
       }
       lead.discom = String(value);
       if (process.env.NODE_ENV === 'development') {
-        console.log('Mapped discom:', lead.discom);
-        console.log('=== END DISCOM MAPPING DEBUG ===');
+        logger.info('Mapped discom:', lead.discom);
+        logger.info('=== END DISCOM MAPPING DEBUG ===');
       }
       return; // Exit early to avoid switch statement
     }
@@ -1341,13 +1343,13 @@ export default function AllLeadsPage() {
       case 'telephone':
       case 'main mobile number':
         if (process.env.NODE_ENV === 'development') {
-          console.log('*** MOBILE NUMBER MAPPING ***');
-          console.log('Setting mobileNumber to: "' + String(value) + '"');
-          console.log('Original value: "' + value + '" (type: ' + typeof value + ')');
+          logger.info('*** MOBILE NUMBER MAPPING ***');
+          logger.info('Setting mobileNumber to: "' + String(value) + '"');
+          logger.info('Original value: "' + value + '" (type: ' + typeof value + ')');
         }
         lead.mobileNumber = String(value);
         if (process.env.NODE_ENV === 'development') {
-          console.log('Lead mobileNumber after setting: "' + lead.mobileNumber + '"');
+          logger.info('Lead mobileNumber after setting: "' + lead.mobileNumber + '"');
         }
 
         // Also populate the mobileNumbers array with the main mobile number
@@ -1364,7 +1366,7 @@ export default function AllLeadsPage() {
             isMain: true
           });
           if (process.env.NODE_ENV === 'development') {
-            console.log('Added main mobile number to mobileNumbers array:', lead.mobileNumbers[0]);
+            logger.info('Added main mobile number to mobileNumbers array:', lead.mobileNumbers[0]);
           }
         } else {
           // Update the first slot if it exists
@@ -1375,7 +1377,7 @@ export default function AllLeadsPage() {
             isMain: true
           };
           if (process.env.NODE_ENV === 'development') {
-            console.log('Updated main mobile number in mobileNumbers array:', lead.mobileNumbers[0]);
+            logger.info('Updated main mobile number in mobileNumbers array:', lead.mobileNumbers[0]);
           }
         }
         break;
@@ -1399,10 +1401,10 @@ export default function AllLeadsPage() {
       case 'telephone 2':
       case 'telephone2':
         if (process.env.NODE_ENV === 'development') {
-          console.log('*** MOBILE NUMBER 2 MAPPING ***');
-          console.log('Setting mobileNumber2 to: "' + String(value) + '"');
-          console.log('Current lead.mobileNumber:', lead.mobileNumber);
-          console.log('Current lead.mobileNumbers:', lead.mobileNumbers);
+          logger.info('*** MOBILE NUMBER 2 MAPPING ***');
+          logger.info('Setting mobileNumber2 to: "' + String(value) + '"');
+          logger.info('Current lead.mobileNumber:', lead.mobileNumber);
+          logger.info('Current lead.mobileNumbers:', lead.mobileNumbers);
         }
 
         // Use helper function to ensure proper initialization
@@ -1416,8 +1418,8 @@ export default function AllLeadsPage() {
           isMain: false
         };
         if (process.env.NODE_ENV === 'development') {
-          console.log('Set mobile number 2:', lead.mobileNumbers![1]);
-          console.log('Final mobileNumbers array:', lead.mobileNumbers);
+          logger.info('Set mobile number 2:', lead.mobileNumbers![1]);
+          logger.info('Final mobileNumbers array:', lead.mobileNumbers);
         }
         break;
       // Mobile Number 3 - complex array logic
@@ -1432,8 +1434,8 @@ export default function AllLeadsPage() {
       case 'contact number 3':
       case 'contact no 3':
         if (process.env.NODE_ENV === 'development') {
-          console.log('*** MOBILE NUMBER 3 MAPPING ***');
-          console.log('Setting mobileNumber3 to: "' + String(value) + '"');
+          logger.info('*** MOBILE NUMBER 3 MAPPING ***');
+          logger.info('Setting mobileNumber3 to: "' + String(value) + '"');
         }
 
         // Use helper function to ensure proper initialization
@@ -1447,7 +1449,7 @@ export default function AllLeadsPage() {
           isMain: false
         };
         if (process.env.NODE_ENV === 'development') {
-          console.log('Set mobile number 3:', lead.mobileNumbers![2]);
+          logger.info('Set mobile number 3:', lead.mobileNumbers![2]);
         }
         break;
       // Contact Name 2 - complex array logic
@@ -1467,10 +1469,10 @@ export default function AllLeadsPage() {
       case 'person contact 2':
       case 'person contact2':
         if (process.env.NODE_ENV === 'development') {
-          console.log('*** CONTACT NAME 2 MAPPING ***');
-          console.log('Setting contact name 2 to: "' + String(value) + '"');
-          console.log('Current lead.mobileNumber:', lead.mobileNumber);
-          console.log('Current lead.mobileNumbers:', lead.mobileNumbers);
+          logger.info('*** CONTACT NAME 2 MAPPING ***');
+          logger.info('Setting contact name 2 to: "' + String(value) + '"');
+          logger.info('Current lead.mobileNumber:', lead.mobileNumber);
+          logger.info('Current lead.mobileNumbers:', lead.mobileNumbers);
         }
 
         // Use helper function to ensure proper initialization
@@ -1484,8 +1486,8 @@ export default function AllLeadsPage() {
           isMain: false
         };
         if (process.env.NODE_ENV === 'development') {
-          console.log('Set contact name 2:', lead.mobileNumbers![1]);
-          console.log('Final mobileNumbers array:', lead.mobileNumbers);
+          logger.info('Set contact name 2:', lead.mobileNumbers![1]);
+          logger.info('Final mobileNumbers array:', lead.mobileNumbers);
         }
         break;
       // Contact Name 3 - complex array logic
@@ -1498,8 +1500,8 @@ export default function AllLeadsPage() {
       case 'person name 3':
       case 'contact person3':
         if (process.env.NODE_ENV === 'development') {
-          console.log('*** CONTACT NAME 3 MAPPING ***');
-          console.log('Setting contact name 3 to: "' + String(value) + '"');
+          logger.info('*** CONTACT NAME 3 MAPPING ***');
+          logger.info('Setting contact name 3 to: "' + String(value) + '"');
         }
 
         // Use helper function to ensure proper initialization
@@ -1513,7 +1515,7 @@ export default function AllLeadsPage() {
           isMain: false
         };
         if (process.env.NODE_ENV === 'development') {
-          console.log('Set contact name 3:', lead.mobileNumbers![2]);
+          logger.info('Set contact name 3:', lead.mobileNumbers![2]);
         }
         break;
       // Status - complex mapping logic
@@ -1524,116 +1526,116 @@ export default function AllLeadsPage() {
       case 'lead_status':
       case 'lead-status':
         if (process.env.NODE_ENV === 'development') {
-          console.log('*** STATUS MAPPING ***');
-          console.log('Status value: "' + String(value) + '"');
+          logger.info('*** STATUS MAPPING ***');
+          logger.info('Status value: "' + String(value) + '"');
         }
         const statusValue = String(value).toLowerCase().trim();
         if (statusValue === 'new') {
           lead.status = 'New';
           if (process.env.NODE_ENV === 'development') {
-            console.log('✅ Mapped to New');
+            logger.info('✅ Mapped to New');
           }
         } else if (statusValue === 'cnr') {
           lead.status = 'CNR';
           if (process.env.NODE_ENV === 'development') {
-            console.log('✅ Mapped to CNR');
+            logger.info('✅ Mapped to CNR');
           }
         } else if (statusValue === 'busy') {
           lead.status = 'Busy';
           if (process.env.NODE_ENV === 'development') {
-            console.log('✅ Mapped to Busy');
+            logger.info('✅ Mapped to Busy');
           }
         } else if (statusValue === 'follow-up' || statusValue === 'followup' || statusValue === 'follow up') {
           lead.status = 'Follow-up';
           if (process.env.NODE_ENV === 'development') {
-            console.log('✅ Mapped to Follow-up');
+            logger.info('✅ Mapped to Follow-up');
           }
         } else if (statusValue === 'deal close' || statusValue === 'dealclose' || statusValue === 'deal_close') {
           lead.status = 'Deal Close';
           if (process.env.NODE_ENV === 'development') {
-            console.log('✅ Mapped to Deal Close');
+            logger.info('✅ Mapped to Deal Close');
           }
         } else if (statusValue === 'work alloted' || statusValue === 'workalloted' || statusValue === 'work_alloted' || statusValue === 'wao') {
           lead.status = 'Work Alloted';
           if (process.env.NODE_ENV === 'development') {
-            console.log(`✅ Mapped "${statusValue}" to Work Alloted (will display as WAO)`);
+            logger.info(`✅ Mapped "${statusValue}" to Work Alloted (will display as WAO)`);
           }
         } else if (statusValue === 'hotlead' || statusValue === 'hot lead' || statusValue === 'hot_lead') {
           lead.status = 'Hotlead';
           if (process.env.NODE_ENV === 'development') {
-            console.log('✅ Mapped to Hotlead');
+            logger.info('✅ Mapped to Hotlead');
           }
         } else if (statusValue === 'mandate sent' || statusValue === 'mandatesent' || statusValue === 'mandate_sent') {
           lead.status = 'Mandate Sent';
           if (process.env.NODE_ENV === 'development') {
-            console.log('✅ Mapped to Mandate Sent');
+            logger.info('✅ Mapped to Mandate Sent');
           }
         } else if (statusValue === 'documentation') {
           lead.status = 'Documentation';
           if (process.env.NODE_ENV === 'development') {
-            console.log('✅ Mapped to Documentation');
+            logger.info('✅ Mapped to Documentation');
           }
         } else if (statusValue === 'others' || statusValue === 'other') {
           lead.status = 'Others';
           if (process.env.NODE_ENV === 'development') {
-            console.log('✅ Mapped to Others');
+            logger.info('✅ Mapped to Others');
           }
         } else {
           // Flexible mapping for variations
           if (statusValue.includes('new')) {
             lead.status = 'New';
             if (process.env.NODE_ENV === 'development') {
-              console.log('✅ Flexible mapping: New');
+              logger.info('✅ Flexible mapping: New');
             }
           } else if (statusValue.includes('cnr')) {
             lead.status = 'CNR';
             if (process.env.NODE_ENV === 'development') {
-              console.log('✅ Flexible mapping: CNR');
+              logger.info('✅ Flexible mapping: CNR');
             }
           } else if (statusValue.includes('busy')) {
             lead.status = 'Busy';
             if (process.env.NODE_ENV === 'development') {
-              console.log('✅ Flexible mapping: Busy');
+              logger.info('✅ Flexible mapping: Busy');
             }
           } else if (statusValue.includes('follow')) {
             lead.status = 'Follow-up';
             if (process.env.NODE_ENV === 'development') {
-              console.log('✅ Flexible mapping: Follow-up');
+              logger.info('✅ Flexible mapping: Follow-up');
             }
           } else if (statusValue.includes('deal') || statusValue.includes('close')) {
             lead.status = 'Deal Close';
             if (process.env.NODE_ENV === 'development') {
-              console.log('✅ Flexible mapping: Deal Close');
+              logger.info('✅ Flexible mapping: Deal Close');
             }
           } else if (statusValue.includes('work') || statusValue.includes('allot') || statusValue.includes('wao')) {
             lead.status = 'Work Alloted';
             if (process.env.NODE_ENV === 'development') {
-              console.log(`✅ Flexible mapping: "${statusValue}" -> Work Alloted (will display as WAO)`);
+              logger.info(`✅ Flexible mapping: "${statusValue}" -> Work Alloted (will display as WAO)`);
             }
           } else if (statusValue.includes('hot')) {
             lead.status = 'Hotlead';
             if (process.env.NODE_ENV === 'development') {
-              console.log('✅ Flexible mapping: Hotlead');
+              logger.info('✅ Flexible mapping: Hotlead');
             }
           } else if (statusValue.includes('mandate')) {
             lead.status = 'Mandate Sent';
             if (process.env.NODE_ENV === 'development') {
-              console.log('✅ Flexible mapping: Mandate Sent');
+              logger.info('✅ Flexible mapping: Mandate Sent');
             }
           } else if (statusValue.includes('document')) {
             lead.status = 'Documentation';
             if (process.env.NODE_ENV === 'development') {
-              console.log('✅ Flexible mapping: Documentation');
+              logger.info('✅ Flexible mapping: Documentation');
             }
           } else if (statusValue.includes('other')) {
             lead.status = 'Others';
             if (process.env.NODE_ENV === 'development') {
-              console.log('✅ Flexible mapping: Others');
+              logger.info('✅ Flexible mapping: Others');
             }
           } else {
             lead.status = 'New'; // Default fallback
             if (process.env.NODE_ENV === 'development') {
-              console.log('⚠️ Default mapping: New');
+              logger.info('⚠️ Default mapping: New');
             }
           }
         }
@@ -1644,30 +1646,30 @@ export default function AllLeadsPage() {
       case 'unit_type':
       case 'type':
         if (process.env.NODE_ENV === 'development') {
-          console.log('*** UNIT TYPE MAPPING ***');
-          console.log('Unit type value: "' + String(value) + '"');
+          logger.info('*** UNIT TYPE MAPPING ***');
+          logger.info('Unit type value: "' + String(value) + '"');
         }
         const unitTypeValue = String(value).toLowerCase().trim();
         if (unitTypeValue === 'new') {
           lead.unitType = 'New';
           if (process.env.NODE_ENV === 'development') {
-            console.log('✅ Mapped to New');
+            logger.info('✅ Mapped to New');
           }
         } else if (unitTypeValue === 'existing') {
           lead.unitType = 'Existing';
           if (process.env.NODE_ENV === 'development') {
-            console.log('✅ Mapped to Existing');
+            logger.info('✅ Mapped to Existing');
           }
         } else if (unitTypeValue === 'other' || unitTypeValue === 'others') {
           lead.unitType = 'Other';
           if (process.env.NODE_ENV === 'development') {
-            console.log('✅ Mapped to Other');
+            logger.info('✅ Mapped to Other');
           }
         } else {
           // Allow custom unit types
           lead.unitType = String(value).trim();
           if (process.env.NODE_ENV === 'development') {
-            console.log('✅ Custom unit type:', lead.unitType);
+            logger.info('✅ Custom unit type:', lead.unitType);
           }
         }
         break;
@@ -1693,13 +1695,13 @@ export default function AllLeadsPage() {
       case 'next_followup':
       case 'nextfollowup_date':
         if (process.env.NODE_ENV === 'development') {
-          console.log('*** FOLLOW-UP DATE MAPPING ***');
-          console.log('Follow-up date value: "' + String(value) + '"');
-          console.log('Follow-up date value type:', typeof value);
+          logger.info('*** FOLLOW-UP DATE MAPPING ***');
+          logger.info('Follow-up date value: "' + String(value) + '"');
+          logger.info('Follow-up date value type:', typeof value);
         }
         lead.followUpDate = convertExcelDate(value);
         if (process.env.NODE_ENV === 'development') {
-          console.log('Follow-up date after setting: "' + lead.followUpDate + '"');
+          logger.info('Follow-up date after setting: "' + lead.followUpDate + '"');
         }
         break;
       // Last Activity Date - complex date logic
@@ -1719,13 +1721,13 @@ export default function AllLeadsPage() {
       case 'lastcontactdate':
       case 'last_contact_date':
         if (process.env.NODE_ENV === 'development') {
-          console.log('*** LAST ACTIVITY DATE MAPPING ***');
-          console.log('Last activity date value: "' + String(value) + '"');
-          console.log('Last activity date value type:', typeof value);
+          logger.info('*** LAST ACTIVITY DATE MAPPING ***');
+          logger.info('Last activity date value: "' + String(value) + '"');
+          logger.info('Last activity date value type:', typeof value);
         }
         lead.lastActivityDate = convertExcelDate(value);
         if (process.env.NODE_ENV === 'development') {
-          console.log('Last activity date after setting: "' + lead.lastActivityDate + '"');
+          logger.info('Last activity date after setting: "' + lead.lastActivityDate + '"');
         }
         break;
       // Notes - complex append logic
@@ -1764,7 +1766,7 @@ export default function AllLeadsPage() {
         break;
       default:
         if (process.env.NODE_ENV === 'development') {
-          console.log('⚠️ UNMAPPED HEADER: ' + headerLower);
+          logger.info('⚠️ UNMAPPED HEADER: ' + headerLower);
         }
         break;
     }
@@ -1772,7 +1774,7 @@ export default function AllLeadsPage() {
     // Fallback: Check for partial matches for mobile number 2 and contact name 2
     if (headerLower.includes('mobile') && headerLower.includes('2') && !headerLower.includes('name')) {
       if (process.env.NODE_ENV === 'development') {
-        console.log('🔄 FALLBACK: Mobile Number 2 detected via partial match:', headerLower);
+        logger.info('🔄 FALLBACK: Mobile Number 2 detected via partial match:', headerLower);
       }
 
       // Use helper function to ensure proper initialization
@@ -1789,7 +1791,7 @@ export default function AllLeadsPage() {
 
     if (headerLower.includes('contact') && headerLower.includes('2') && headerLower.includes('name')) {
       if (process.env.NODE_ENV === 'development') {
-        console.log('🔄 FALLBACK: Contact Name 2 detected via partial match:', headerLower);
+        logger.info('🔄 FALLBACK: Contact Name 2 detected via partial match:', headerLower);
       }
 
       // Use helper function to ensure proper initialization
@@ -1805,7 +1807,7 @@ export default function AllLeadsPage() {
     }
 
     if (process.env.NODE_ENV === 'development') {
-      console.log('=== END MAPPING DEBUG ===');
+      logger.info('=== END MAPPING DEBUG ===');
     }
   };
 
@@ -1843,7 +1845,7 @@ export default function AllLeadsPage() {
 
     if (process.env.NODE_ENV === 'development') {
       if (process.env.NODE_ENV === 'development') {
-        console.log(`🔍 Detected header row at index ${bestIndex} with confidence ${Math.round((bestScore / 10) * 100)}%`);
+        logger.info(`🔍 Detected header row at index ${bestIndex} with confidence ${Math.round((bestScore / 10) * 100)}%`);
       }
     }
     return bestIndex;
@@ -1877,8 +1879,8 @@ export default function AllLeadsPage() {
       const dataRows = rows.slice(headerRowIndex + 1);
 
       if (process.env.NODE_ENV === 'development') {
-        console.log('CSV Headers (detected):', headers);
-        console.log('CSV Data rows:', dataRows.length);
+        logger.info('CSV Headers (detected):', headers);
+        logger.info('CSV Data rows:', dataRows.length);
       }
 
       // Show import mapping preview for CSV
@@ -1896,7 +1898,7 @@ export default function AllLeadsPage() {
         return lead;
       });
     } catch (error) {
-      console.error('CSV parsing error:', error);
+      logger.error('CSV parsing error:', error);
       // Fallback to simple parsing if XLSX fails
       const lines = content.split('\n').filter(line => line.trim());
       if (lines.length < 2) return [];
@@ -1921,12 +1923,12 @@ export default function AllLeadsPage() {
   // Parse Excel file using xlsx library
   const parseExcel = async (file: File): Promise<Partial<Lead>[]> => {
     if (process.env.NODE_ENV === 'development') {
-      console.log('Starting Excel parsing...');
+      logger.info('Starting Excel parsing...');
     }
 
     try {
       if (process.env.NODE_ENV === 'development') {
-        console.log('Starting Excel parsing with XLSX library');
+        logger.info('Starting Excel parsing with XLSX library');
       }
 
       return new Promise((resolve, reject) => {
@@ -1936,8 +1938,8 @@ export default function AllLeadsPage() {
           try {
             const data = new Uint8Array(e.target?.result as ArrayBuffer);
             if (process.env.NODE_ENV === 'development') {
-              console.log('File read successfully, size:', e.target?.result);
-              console.log('Data converted to Uint8Array, length:', data.length);
+              logger.info('File read successfully, size:', e.target?.result);
+              logger.info('Data converted to Uint8Array, length:', data.length);
             }
 
             // Validate XLSX library is loaded
@@ -1947,12 +1949,12 @@ export default function AllLeadsPage() {
 
             // Log XLSX version for debugging
             if (process.env.NODE_ENV === 'development') {
-              console.log('📚 XLSX library version:', XLSX.version);
+              logger.info('📚 XLSX library version:', XLSX.version);
             }
 
             const workbook = XLSX.read(data, { type: 'array' });
             if (process.env.NODE_ENV === 'development') {
-              console.log('Workbook read, sheet names:', workbook.SheetNames);
+              logger.info('Workbook read, sheet names:', workbook.SheetNames);
             }
 
             // Validate workbook structure
@@ -1961,7 +1963,7 @@ export default function AllLeadsPage() {
             }
 
             if (process.env.NODE_ENV === 'development') {
-              console.log('📊 Sheet structure:', {
+              logger.info('📊 Sheet structure:', {
                 sheetNames: workbook.SheetNames,
                 sheetCount: workbook.SheetNames.length
               });
@@ -1979,7 +1981,7 @@ export default function AllLeadsPage() {
               return;
             }
             if (process.env.NODE_ENV === 'development') {
-              console.log('Worksheet loaded:', sheetName);
+              logger.info('Worksheet loaded:', sheetName);
             }
 
             // Convert to JSON with proper date handling
@@ -1990,7 +1992,7 @@ export default function AllLeadsPage() {
               dateNF: 'DD-MM-YYYY'
             });
             if (process.env.NODE_ENV === 'development') {
-              console.log('JSON data:', jsonData);
+              logger.info('JSON data:', jsonData);
             }
 
             if (jsonData.length < 2) {
@@ -2000,16 +2002,16 @@ export default function AllLeadsPage() {
 
             // Use intelligent header detection instead of assuming row 0 is headers
             if (process.env.NODE_ENV === 'development') {
-              console.log('🔍 Detecting header row...');
+              logger.info('🔍 Detecting header row...');
             }
             const headerRowIndex = detectHeaderRowIndex(jsonData as any[][]);
             const headers = (jsonData[headerRowIndex] as string[]).map(h => String(h ?? '').trim());
             const dataRows = jsonData.slice(headerRowIndex + 1);
 
             if (process.env.NODE_ENV === 'development') {
-              console.log('📊 Detected headers:', headers);
-              console.log('📊 Data starts at row:', headerRowIndex + 1);
-              console.log('📊 Processing', dataRows.length, 'data rows');
+              logger.info('📊 Detected headers:', headers);
+              logger.info('📊 Data starts at row:', headerRowIndex + 1);
+              logger.info('📊 Processing', dataRows.length, 'data rows');
             }
 
             // Update import statistics (commented out to avoid runtime issues)
@@ -2034,36 +2036,36 @@ export default function AllLeadsPage() {
                 const value = rowArray[colIndex];
                 if (value !== undefined && value !== null && value !== '') {
                   if (process.env.NODE_ENV === 'development') {
-                    console.log(`Processing row ${index + 1}, header: "${header}", value: "${value}"`);
+                    logger.info(`Processing row ${index + 1}, header: "${header}", value: "${value}"`);
 
                     // Special debug for discom headers
                     if (header && header.toLowerCase().includes('discom')) {
-                      console.log('=== DISCOM HEADER DEBUG ===');
-                      console.log('Header:', header);
-                      console.log('Value:', value);
-                      console.log('Value type:', typeof value);
-                      console.log('Value length:', value ? value.toString().length : 'undefined');
-                      console.log('=== END DISCOM HEADER DEBUG ===');
+                      logger.info('=== DISCOM HEADER DEBUG ===');
+                      logger.info('Header:', header);
+                      logger.info('Value:', value);
+                      logger.info('Value type:', typeof value);
+                      logger.info('Value length:', value ? value.toString().length : 'undefined');
+                      logger.info('=== END DISCOM HEADER DEBUG ===');
                     }
 
                     // Special debug for follow-up date headers
                     if (header && (header.toLowerCase().includes('follow') || header.toLowerCase().includes('next'))) {
-                      console.log('=== FOLLOW-UP DATE HEADER DEBUG ===');
-                      console.log('Header:', header);
-                      console.log('Value:', value);
-                      console.log('Value type:', typeof value);
-                      console.log('Value length:', value ? value.toString().length : 'undefined');
-                      console.log('=== END FOLLOW-UP DATE HEADER DEBUG ===');
+                      logger.info('=== FOLLOW-UP DATE HEADER DEBUG ===');
+                      logger.info('Header:', header);
+                      logger.info('Value:', value);
+                      logger.info('Value type:', typeof value);
+                      logger.info('Value length:', value ? value.toString().length : 'undefined');
+                      logger.info('=== END FOLLOW-UP DATE HEADER DEBUG ===');
                     }
 
                     // Special debug for last activity date headers
                     if (header && (header.toLowerCase().includes('activity') || header.toLowerCase().includes('last'))) {
-                      console.log('=== LAST ACTIVITY DATE HEADER DEBUG ===');
-                      console.log('Header:', header);
-                      console.log('Value:', value);
-                      console.log('Value type:', typeof value);
-                      console.log('Value length:', value ? value.toString().length : 'undefined');
-                      console.log('=== END LAST ACTIVITY DATE HEADER DEBUG ===');
+                      logger.info('=== LAST ACTIVITY DATE HEADER DEBUG ===');
+                      logger.info('Header:', header);
+                      logger.info('Value:', value);
+                      logger.info('Value type:', typeof value);
+                      logger.info('Value length:', value ? value.toString().length : 'undefined');
+                      logger.info('=== END LAST ACTIVITY DATE HEADER DEBUG ===');
                     }
                   }
 
@@ -2079,7 +2081,7 @@ export default function AllLeadsPage() {
                   const normalizedDate = convertExcelDate(value);
                   if (normalizedDate !== value) {
                     if (process.env.NODE_ENV === 'development') {
-                      console.log(`📅 Normalized ${field}: "${value}" → "${normalizedDate}"`);
+                      logger.info(`📅 Normalized ${field}: "${value}" → "${normalizedDate}"`);
                     }
                     (lead as any)[field] = normalizedDate;
                   }
@@ -2088,13 +2090,13 @@ export default function AllLeadsPage() {
 
               // Note: setDefaultValues will be called later in handleFileImport for performance
               if (process.env.NODE_ENV === 'development') {
-                console.log('Processed lead:', lead);
+                logger.info('Processed lead:', lead);
               }
               return lead;
             });
 
             if (process.env.NODE_ENV === 'development') {
-              console.log('All leads processed:', leads);
+              logger.info('All leads processed:', leads);
             }
 
             // Reset import progress
@@ -2103,23 +2105,23 @@ export default function AllLeadsPage() {
 
             resolve(leads);
           } catch (error) {
-            console.error('Excel parsing error:', error);
+            logger.error('Excel parsing error:', error);
             reject(new Error(`Error parsing Excel file: ${error instanceof Error ? error.message : 'Unknown error'}`));
           }
         };
 
         reader.onerror = () => {
-          console.error('FileReader error');
+          logger.error('FileReader error');
           reject(new Error('Failed to read file'));
         };
 
         if (process.env.NODE_ENV === 'development') {
-          console.log('Starting file read...');
+          logger.info('Starting file read...');
         }
         reader.readAsArrayBuffer(file);
       });
     } catch (error) {
-      console.error('Failed to parse Excel file:', error);
+      logger.error('Failed to parse Excel file:', error);
       throw new Error('Failed to parse Excel file. Please ensure the file is a valid Excel format (.xlsx or .xls)');
     }
   };
@@ -2134,9 +2136,9 @@ export default function AllLeadsPage() {
     const visibleColumns = getVisibleColumns();
 
     if (process.env.NODE_ENV === 'development') {
-      console.log('📊 Import Mapping Preview:');
-      console.log('Excel Headers:', headers);
-      console.log('Available Mappings:', Object.keys(dynamicMapping).length);
+      logger.info('📊 Import Mapping Preview:');
+      logger.info('Excel Headers:', headers);
+      logger.info('Available Mappings:', Object.keys(dynamicMapping).length);
     }
 
     const mappingPreview = headers.map(header => {
@@ -2154,7 +2156,7 @@ export default function AllLeadsPage() {
     });
 
     if (process.env.NODE_ENV === 'development') {
-      console.log('📊 Mapping Preview:', mappingPreview);
+      logger.info('📊 Mapping Preview:', mappingPreview);
     }
 
     // Enhanced validation for critical fields
@@ -2171,14 +2173,14 @@ export default function AllLeadsPage() {
     });
 
     if (process.env.NODE_ENV === 'development') {
-      console.log('📊 Critical Field Mapping:', criticalMappings);
+      logger.info('📊 Critical Field Mapping:', criticalMappings);
     }
 
     // Check for missing critical fields
     const missingCritical = criticalMappings.filter(m => !m.isMapped);
     if (missingCritical.length > 0) {
       if (process.env.NODE_ENV === 'development') {
-        console.warn('⚠️ Critical fields missing from import:', missingCritical.map(m => m.label));
+        logger.warn('⚠️ Critical fields missing from import:', missingCritical.map(m => m.label));
       }
     }
 
@@ -2186,7 +2188,7 @@ export default function AllLeadsPage() {
     const unmappedCount = mappingPreview.filter(m => !m.isMapped).length;
 
     if (process.env.NODE_ENV === 'development') {
-      console.log(`📊 Mapping Summary: ${mappedCount} mapped, ${unmappedCount} unmapped`);
+      logger.info(`📊 Mapping Summary: ${mappedCount} mapped, ${unmappedCount} unmapped`);
     }
 
     // Enhanced suggestions for unmapped headers
@@ -2223,7 +2225,7 @@ export default function AllLeadsPage() {
       });
 
       if (process.env.NODE_ENV === 'development') {
-        console.log('📊 Unmapped Header Suggestions:', suggestions);
+        logger.info('📊 Unmapped Header Suggestions:', suggestions);
       }
 
       const unmappedList = unmappedHeaders.map(h => h.excelHeader).join(', ');
@@ -2264,18 +2266,18 @@ export default function AllLeadsPage() {
   // Handle Excel/CSV import
   const handleFileImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
     if (process.env.NODE_ENV === 'development') {
-      console.log('=== EXCEL IMPORT STARTED ===');
+      logger.info('=== EXCEL IMPORT STARTED ===');
     }
     const file = event.target.files?.[0];
     if (!file) {
       if (process.env.NODE_ENV === 'development') {
-        console.log('No file selected');
+        logger.info('No file selected');
       }
       return;
     }
 
     if (process.env.NODE_ENV === 'development') {
-      console.log('File selected:', file.name, file.type, file.size);
+      logger.info('File selected:', file.name, file.type, file.size);
     }
 
     try {
@@ -2289,13 +2291,13 @@ export default function AllLeadsPage() {
 
       if (isCSV) {
         if (process.env.NODE_ENV === 'development') {
-          console.log('Processing CSV file...');
+          logger.info('Processing CSV file...');
         }
         const content = await file.text();
         importedLeadsData = parseCSV(content);
       } else if (isExcel) {
         if (process.env.NODE_ENV === 'development') {
-          console.log('Processing Excel file...');
+          logger.info('Processing Excel file...');
         }
         importedLeadsData = await parseExcel(file);
       } else {
@@ -2303,7 +2305,7 @@ export default function AllLeadsPage() {
       }
 
       if (process.env.NODE_ENV === 'development') {
-        console.log('Parsed leads:', importedLeadsData);
+        logger.info('Parsed leads:', importedLeadsData);
       }
 
       // Direct import without preview modal
@@ -2360,7 +2362,7 @@ export default function AllLeadsPage() {
       });
 
       if (process.env.NODE_ENV === 'development') {
-        console.log(`📊 Built lookup maps: ${mobileToLeadMap.size} mobile, ${consumerToLeadMap.size} consumer`);
+        logger.info(`📊 Built lookup maps: ${mobileToLeadMap.size} mobile, ${consumerToLeadMap.size} consumer`);
       }
 
       // Check if lead is a duplicate (exists in any form)
@@ -2397,7 +2399,7 @@ export default function AllLeadsPage() {
         if (isDuplicate(newLead)) {
           skippedDuplicateCount++;
           if (process.env.NODE_ENV === 'development') {
-            console.log(`🚫 Skipped duplicate: ${newLead.clientName || newLead.kva || 'Unknown'}`);
+            logger.info(`🚫 Skipped duplicate: ${newLead.clientName || newLead.kva || 'Unknown'}`);
           }
         } else {
           leadsToCreate.push(newLead);
@@ -2433,8 +2435,8 @@ export default function AllLeadsPage() {
       // Clear the file input
       event.target.value = '';
     } catch (error) {
-      console.error('=== IMPORT ERROR ===');
-      console.error('Import error:', error);
+      logger.error('=== IMPORT ERROR ===');
+      logger.error('Import error:', error);
 
       // Show error notification
       setShowToast(true);
@@ -2464,7 +2466,7 @@ export default function AllLeadsPage() {
       const date = new Date(dateString);
       if (isNaN(date.getTime())) {
         if (process.env.NODE_ENV === 'development') {
-          console.error('❌ Invalid date format for export:', dateString);
+          logger.error('❌ Invalid date format for export:', dateString);
         }
         return ''; // Return empty string if invalid
       }
@@ -2478,7 +2480,7 @@ export default function AllLeadsPage() {
       // Validate the final string format
       if (!formattedDate.match(/^\d{2}-\d{2}-\d{4}$/)) {
         if (process.env.NODE_ENV === 'development') {
-          console.error('❌ Invalid date format for export:', formattedDate);
+          logger.error('❌ Invalid date format for export:', formattedDate);
         }
         return ''; // Return empty string if format is invalid
       }
@@ -2486,7 +2488,7 @@ export default function AllLeadsPage() {
       return formattedDate;
     } catch {
       if (process.env.NODE_ENV === 'development') {
-        console.error('❌ Invalid date format for export:', dateString);
+        logger.error('❌ Invalid date format for export:', dateString);
       }
       return ''; // Return empty string if conversion fails
     }
@@ -2557,8 +2559,8 @@ export default function AllLeadsPage() {
       const headers = allFields.map(field => field.label);
 
       // Add logging to track export headers
-      console.log('📤 Export Headers (ALL FIELDS):', headers);
-      console.log('📤 Total columns:', headers.length);
+      logger.info('📤 Export Headers (ALL FIELDS):', headers);
+      logger.info('📤 Total columns:', headers.length);
 
       // Convert leads to Excel rows with ALL data
       const rows = leadsToExport.map(lead => {
@@ -2635,7 +2637,7 @@ export default function AllLeadsPage() {
         return rowData;
       });
 
-      console.log('📤 Exporting', leadsToExport.length, 'leads with', headers.length, 'columns (ALL FIELDS)');
+      logger.info('📤 Exporting', leadsToExport.length, 'leads with', headers.length, 'columns (ALL FIELDS)');
 
       // Create workbook and worksheet
       const wb = XLSX.utils.book_new();
@@ -2657,7 +2659,7 @@ export default function AllLeadsPage() {
         setShowToast(false);
       }, 5000);
     } catch (error) {
-      console.error('Export error:', error);
+      logger.error('Export error:', error);
       setShowToast(true);
       setToastMessage('Failed to export leads. Please try again.');
       setToastType('error');
@@ -2873,31 +2875,31 @@ export default function AllLeadsPage() {
             onColumnAdded={(column) => {
               // Handle column addition
               if (process.env.NODE_ENV === 'development') {
-                console.log('Column added:', column);
+                logger.info('Column added:', column);
               }
             }}
             onColumnDeleted={(fieldKey) => {
               // Handle column deletion
               if (process.env.NODE_ENV === 'development') {
-                console.log('Column deleted:', fieldKey);
+                logger.info('Column deleted:', fieldKey);
               }
             }}
             onColumnReorder={(newOrder) => {
               // Handle column reordering
               if (process.env.NODE_ENV === 'development') {
-                console.log('Columns reordered:', newOrder);
+                logger.info('Columns reordered:', newOrder);
               }
             }}
             onRowsAdded={(count) => {
               // Handle row addition
               if (process.env.NODE_ENV === 'development') {
-                console.log('Rows added:', count);
+                logger.info('Rows added:', count);
               }
             }}
             onRowsDeleted={(count) => {
               // Handle row deletion
               if (process.env.NODE_ENV === 'development') {
-                console.log('Rows deleted:', count);
+                logger.info('Rows deleted:', count);
               }
             }}
           />

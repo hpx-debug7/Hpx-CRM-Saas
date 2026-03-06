@@ -11,7 +11,7 @@
  */
 
 import { describe, test, expect, beforeAll, beforeEach } from 'vitest';
-import { prisma } from '@/lib/db';
+import { prisma } from '@/lib/server/db';
 import {
     hashPassword,
     isAccountLocked,
@@ -19,7 +19,7 @@ import {
     resetFailedLoginAttempts,
     MAX_FAILED_ATTEMPTS,
     LOCKOUT_DURATION_MINUTES,
-} from '@/lib/auth';
+} from '@/lib/server/auth';
 
 describe('Account Lockout', () => {
     let testCompany: any;

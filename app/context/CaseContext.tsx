@@ -1,5 +1,7 @@
 'use client';
 
+
+import { logger } from '@/lib/client/logger';
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from 'react';
 import {
     Case,
@@ -77,7 +79,7 @@ function generateCaseNumber(): string {
         }
         localStorage.setItem(CASE_COUNTER_KEY, counter.toString());
     } catch (error) {
-        console.error('Error managing case counter:', error);
+        logger.error('Error managing case counter:', error);
     }
 
     const year = new Date().getFullYear();
@@ -131,7 +133,7 @@ const createCaseAuditLog = (
 
         addAuditLog(auditLog);
     } catch (error) {
-        console.error('Error creating case audit log:', error);
+        logger.error('Error creating case audit log:', error);
     }
 };
 
@@ -215,7 +217,7 @@ export function CaseProvider({ children }: { children: ReactNode }) {
                 }
             }
         } catch (error) {
-            console.error('Error loading cases:', error);
+            logger.error('Error loading cases:', error);
         } finally {
             setIsLoading(false);
             setIsHydrated(true);
@@ -230,7 +232,7 @@ export function CaseProvider({ children }: { children: ReactNode }) {
             try {
                 localStorage.setItem(CASES_STORAGE_KEY, JSON.stringify(cases));
             } catch (error) {
-                console.error('Error saving cases:', error);
+                logger.error('Error saving cases:', error);
             }
         }, 300);
 
@@ -506,7 +508,7 @@ export function CaseProvider({ children }: { children: ReactNode }) {
             historyList.push(historyEntry);
             localStorage.setItem(ASSIGNMENT_HISTORY_KEY, JSON.stringify(historyList));
         } catch (error) {
-            console.error('Error saving assignment history:', error);
+            logger.error('Error saving assignment history:', error);
         }
 
         setCases(prev => prev.map(c =>
@@ -626,7 +628,7 @@ export function CaseProvider({ children }: { children: ReactNode }) {
                 historyList.push(...historyEntries);
                 localStorage.setItem(ASSIGNMENT_HISTORY_KEY, JSON.stringify(historyList));
             } catch (error) {
-                console.error('Error saving assignment history:', error);
+                logger.error('Error saving assignment history:', error);
             }
         }
 

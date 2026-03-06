@@ -8,6 +8,7 @@
  */
 
 // Import encryption utilities
+import { logger } from '@/lib/client/logger';
 import { isSensitiveKey, encryptData, decryptData, hasMasterKey } from './encryption';
 import { logStorageError, logQuotaExceeded, logEncryptionError, logDecryptionError, logValidationError, ErrorSeverity, ErrorCategory } from './storageErrorLogger';
 import type { Lead } from '../types/shared';
@@ -96,7 +97,7 @@ export async function getQuota(): Promise<QuotaInfo | null> {
 
     return null;
   } catch (error) {
-    console.warn('Failed to get storage quota estimate:', error);
+    logger.warn('Failed to get storage quota estimate:', error);
     return null;
   }
 }
@@ -205,7 +206,7 @@ export function reconcileStorageSize(): number {
 
   // Only update if drift is significant (more than 1KB)
   if (drift > 1024) {
-    console.warn(`Storage size drift detected: ${drift} bytes. Correcting cached size.`);
+    logger.warn(`Storage size drift detected: ${drift} bytes. Correcting cached size.`);
     approxSizeBytes = actualSize;
   }
 
@@ -496,7 +497,7 @@ async function executeTransaction(transaction: StorageTransaction): Promise<void
       // Final failure - notify and reject
       config?.onError?.(error instanceof Error ? error : new Error(String(error)));
       transaction.reject?.(error instanceof Error ? error : new Error(String(error)));
-      console.error(`Storage write failed for key ${key}:`, error);
+      logger.error(`Storage write failed for key ${key}:`, error);
       throw error;
     }
   }
@@ -521,7 +522,7 @@ export function enqueueWrite(key: string, data: any, config?: Partial<StorageCon
 
   // Start processing queue
   processQueue(key).catch(error => {
-    console.error(`Queue processing failed for key ${key}:`, error);
+    logger.error(`Queue processing failed for key ${key}:`, error);
     if (config?.onError) {
       config.onError(error);
     }
@@ -583,7 +584,7 @@ export async function setItem(key: string, data: any, config?: Partial<StorageCo
     if (config?.enableBackup) {
       const backupResult = createBackup(key);
       if (!backupResult.success) {
-        console.warn(`Backup failed for ${key}:`, backupResult.error);
+        logger.warn(`Backup failed for ${key}:`, backupResult.error);
       }
     }
 
@@ -597,7 +598,7 @@ export async function setItem(key: string, data: any, config?: Partial<StorageCo
           if (Array.isArray(existingLeads)) {
             const validation = validateLeadsSubmittedPayloads(existingLeads, data);
             if (!validation.valid) {
-              console.error('submitted_payload immutability violations detected:', validation.errors);
+              logger.error('submitted_payload immutability violations detected:', validation.errors);
               logValidationError('submitted_payload immutability violation', new Error(validation.errors.join('; ')));
               // Use corrected leads with restored original submitted_payloads
               dataToWrite = validation.correctedLeads;
@@ -605,7 +606,7 @@ export async function setItem(key: string, data: any, config?: Partial<StorageCo
           }
         }
       } catch (guardError) {
-        console.error('Error in submitted_payload guard:', guardError);
+        logger.error('Error in submitted_payload guard:', guardError);
       }
     }
 
@@ -707,7 +708,7 @@ export async function setItemAwaited(key: string, data: any, config?: Partial<St
 
     // Start processing queue
     processQueue(key).catch(error => {
-      console.error(`Queue processing failed for key ${key}:`, error);
+      logger.error(`Queue processing failed for key ${key}:`, error);
       reject(error);
     });
   });
@@ -831,7 +832,7 @@ export async function removeItem(key: string, config?: Partial<StorageConfig>): 
     if (config?.enableBackup) {
       const backupResult = createBackup(key);
       if (!backupResult.success) {
-        console.warn(`Backup failed for ${key}:`, backupResult.error);
+        logger.warn(`Backup failed for ${key}:`, backupResult.error);
       }
     }
 
@@ -920,7 +921,7 @@ export function restoreFromBackup(key: string): StorageResult<void> {
           severity: ErrorSeverity.HIGH,
           category: ErrorCategory.CORRUPTION
         });
-        console.warn(`Backup data for '${key}' is corrupted and cannot be restored.`, parseError);
+        logger.warn(`Backup data for '${key}' is corrupted and cannot be restored.`, parseError);
       }
     }
 
@@ -1014,7 +1015,7 @@ export async function flushPending(): Promise<void> {
       new Promise<void>(async (resolve) => {
         const result = await setItemSync(key, data);
         if (!result.success) {
-          console.error(`Flush failed for ${key}:`, result.error);
+          logger.error(`Flush failed for ${key}:`, result.error);
         }
         resolve();
       })
@@ -1056,7 +1057,7 @@ export async function flushPendingSyncFor(keys: string[]): Promise<void> {
     if (pendingDataForKey !== undefined) {
       const result = await setItemSync(key, pendingDataForKey);
       if (!result.success) {
-        console.error(`Synchronous flush failed for ${key}:`, result.error);
+        logger.error(`Synchronous flush failed for ${key}:`, result.error);
       }
       pendingData.delete(key);
     }
@@ -1118,7 +1119,7 @@ export function initStorageSync(): void {
           severity: ErrorSeverity.LOW,
           category: ErrorCategory.CORRUPTION
         });
-        console.warn(`Received invalid data from another tab for '${event.key}'. Ignoring update.`, error);
+        logger.warn(`Received invalid data from another tab for '${event.key}'. Ignoring update.`, error);
       }
     }
   });
@@ -1147,7 +1148,7 @@ export function initStorageManager(globalConfig?: Partial<StorageConfig>): void 
     for (const [key, data] of pendingData.entries()) {
       const result = await setItemSync(key, data, globalConfig);
       if (!result.success) {
-        console.error(`Emergency flush failed for ${key}:`, result.error);
+        logger.error(`Emergency flush failed for ${key}:`, result.error);
       }
     }
     pendingData.clear();
@@ -1158,7 +1159,7 @@ export function initStorageManager(globalConfig?: Partial<StorageConfig>): void 
         const lastTransaction = transactions[transactions.length - 1];
         const result = await setItemSync(key, lastTransaction.data, globalConfig);
         if (!result.success) {
-          console.error(`Emergency transaction flush failed for ${key}:`, result.error);
+          logger.error(`Emergency transaction flush failed for ${key}:`, result.error);
         }
       }
     }
@@ -1173,7 +1174,7 @@ export function initStorageManager(globalConfig?: Partial<StorageConfig>): void 
       reconcileStorageSize();
 
       flushPending().catch(error => {
-        console.error('Visibility change flush failed:', error);
+        logger.error('Visibility change flush failed:', error);
       });
     }
   };
@@ -1652,7 +1653,7 @@ export function importStorage(jsonString: string, options: ImportOptions = {}): 
       if (backupResult.success && backupResult.data) {
         backupKey = backupResult.data;
       } else {
-        console.warn('Failed to create backup:', backupResult.error);
+        logger.warn('Failed to create backup:', backupResult.error);
       }
     }
 
@@ -1676,7 +1677,7 @@ export function importStorage(jsonString: string, options: ImportOptions = {}): 
       if (backupKey) {
         const restoreResult = restoreFromImportBackup(backupKey);
         if (!restoreResult.success) {
-          console.error('Failed to restore backup after import failure:', restoreResult.error);
+          logger.error('Failed to restore backup after import failure:', restoreResult.error);
         }
       }
 
@@ -1975,7 +1976,7 @@ export function addAuditLog(entry: SystemAuditLog): void {
     // Invalidate cache after adding new log
     invalidateAuditLogsCache();
   } catch (error) {
-    console.error('Error adding audit log:', error);
+    logger.error('Error adding audit log:', error);
   }
 }
 
@@ -1996,7 +1997,7 @@ export function getAuditLogs(): SystemAuditLog[] {
 
     return auditLogsCache!;
   } catch (error) {
-    console.error('Error reading audit logs:', error);
+    logger.error('Error reading audit logs:', error);
     return [];
   }
 }
@@ -2032,7 +2033,7 @@ export function exportAuditLogs(): string {
     const deletionLogsJson = localStorage.getItem('leadDeletionAuditLog') || '[]';
     deletionLogs = JSON.parse(deletionLogsJson);
   } catch (error) {
-    console.error('Error reading deletion logs for export:', error);
+    logger.error('Error reading deletion logs for export:', error);
   }
 
   const combinedExport = {

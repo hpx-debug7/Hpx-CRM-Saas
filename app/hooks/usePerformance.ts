@@ -1,5 +1,7 @@
 'use client';
 
+
+import { logger } from '@/lib/client/logger';
 import { useEffect, useRef, useState, useCallback } from 'react';
 
 export function usePerformance() {
@@ -16,7 +18,7 @@ export function usePerformance() {
 
     // Log performance metrics in development
     if (process.env.NODE_ENV === 'development' && renderTime > 16) {
-      console.warn(`Slow render detected: ${renderTime.toFixed(2)}ms (render #${renderCount.current})`);
+      logger.warn(`Slow render detected: ${renderTime.toFixed(2)}ms (render #${renderCount.current})`);
     }
   });
 
@@ -27,7 +29,7 @@ export function usePerformance() {
       return () => {
         const end = performance.now();
         if (process.env.NODE_ENV === 'development') {
-          console.log(`${name} took ${(end - start).toFixed(2)}ms`);
+          logger.info(`${name} took ${(end - start).toFixed(2)}ms`);
         }
       };
     }
@@ -147,7 +149,7 @@ export function useDataProcessingPerformance() {
 
       // Log performance warnings in development
       if (process.env.NODE_ENV === 'development' && duration > PERFORMANCE_BUDGET_MS) {
-        console.warn(
+        logger.warn(
           `⚠️ Performance budget exceeded: ${operationName} took ${duration.toFixed(2)}ms (budget: ${PERFORMANCE_BUDGET_MS}ms)`
         );
       }
@@ -159,7 +161,7 @@ export function useDataProcessingPerformance() {
     } catch (e) {
       // Performance API not available or failed
       if (process.env.NODE_ENV === 'development') {
-        console.debug('Performance measurement failed:', e);
+        logger.debug('Performance measurement failed:', e);
       }
     }
 

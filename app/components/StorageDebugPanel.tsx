@@ -18,6 +18,7 @@
 
 'use client';
 
+import { logger } from '@/lib/client/logger';
 import React, { useState, useEffect, useRef } from 'react';
 import { getStorageStats, clearAllBackups, exportStorage, importStorage, dryRunImport } from '../utils/storage';
 
@@ -50,7 +51,7 @@ export default function StorageDebugPanel() {
         const storageStats = await getStorageStats();
         setStats(storageStats);
       } catch (error) {
-        console.error('Failed to load storage stats:', error);
+        logger.error('Failed to load storage stats:', error);
       }
     };
 
@@ -89,7 +90,7 @@ export default function StorageDebugPanel() {
       document.addEventListener('keydown', handleEscape);
       return () => document.removeEventListener('keydown', handleEscape);
     }
-    
+
     return undefined;
   }, [isOpen]);
 
@@ -166,14 +167,14 @@ export default function StorageDebugPanel() {
         reader.onload = async (e) => {
           try {
             const jsonString = e.target?.result as string;
-            
+
             // First, perform dry-run validation
             const validation = dryRunImport(jsonString);
             if (!validation.valid) {
               alert(`Import validation failed:\n${validation.errors.join('\n')}`);
               return;
             }
-            
+
             // Show validation warnings if any
             if (validation.warnings.length > 0) {
               const proceed = confirm(
@@ -184,13 +185,13 @@ export default function StorageDebugPanel() {
               );
               if (!proceed) return;
             }
-            
+
             // Perform the actual import
             const result = await importStorage(jsonString, {
               createBackup: true,
               validateKeys: true
             });
-            
+
             if (result.success) {
               alert('Storage imported successfully');
               handleRefreshStats();
@@ -230,9 +231,8 @@ export default function StorageDebugPanel() {
           ref={toggleButtonRef}
           type="button"
           onClick={isOpen ? handleCloseModal : handleOpenModal}
-          className={`p-3 rounded-full shadow-lg transition-all duration-200 ${
-            stats ? getUsageBgColor(stats.percentUsed) : 'bg-gray-100'
-          } hover:scale-105`}
+          className={`p-3 rounded-full shadow-lg transition-all duration-200 ${stats ? getUsageBgColor(stats.percentUsed) : 'bg-gray-100'
+            } hover:scale-105`}
           aria-label={isOpen ? 'Close storage debug panel' : 'Open storage debug panel'}
           // eslint-disable-next-line @typescript-eslint/ban-ts-comment
           // @ts-ignore - ariaExpanded contains the required "true"/"false" string values per ARIA spec
@@ -254,12 +254,12 @@ export default function StorageDebugPanel() {
 
       {/* Modal */}
       {isOpen && (
-        <div 
+        <div
           ref={modalRef}
           id="storage-debug-modal"
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" 
-          role="dialog" 
-          aria-modal="true" 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          role="dialog"
+          aria-modal="true"
           aria-labelledby="storage-debug-title"
           aria-describedby="storage-debug-description"
         >
@@ -325,13 +325,12 @@ export default function StorageDebugPanel() {
                       <span>{Math.round(stats.percentUsed * 100)}%</span>
                     </div>
                     <progress
-                      className={`storage-progress w-full h-2 rounded-full ${
-                        stats.percentUsed < 0.5
-                          ? 'text-green-500'
-                          : stats.percentUsed < 0.8
+                      className={`storage-progress w-full h-2 rounded-full ${stats.percentUsed < 0.5
+                        ? 'text-green-500'
+                        : stats.percentUsed < 0.8
                           ? 'text-yellow-500'
                           : 'text-red-500'
-                      }`}
+                        }`}
                       value={Math.min(Math.round(stats.percentUsed * 100), 100)}
                       max={100}
                       aria-label={`Storage usage: ${Math.round(stats.percentUsed * 100)}%`}

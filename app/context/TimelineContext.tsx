@@ -1,5 +1,7 @@
 'use client';
 
+
+import { logger } from '@/lib/client/logger';
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import {
     CaseTimelineEntry,
@@ -41,7 +43,7 @@ export function TimelineProvider({ children }: { children: ReactNode }) {
                 setTimeline(JSON.parse(storedTimeline));
             }
         } catch (error) {
-            console.error('Error loading timeline:', error);
+            logger.error('Error loading timeline:', error);
         } finally {
             setIsHydrated(true);
         }
@@ -55,7 +57,7 @@ export function TimelineProvider({ children }: { children: ReactNode }) {
             try {
                 localStorage.setItem(TIMELINE_STORAGE_KEY, JSON.stringify(timeline));
             } catch (error) {
-                console.error('Error saving timeline:', error);
+                logger.error('Error saving timeline:', error);
             }
         }, 300);
 

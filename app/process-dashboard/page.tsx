@@ -1,5 +1,7 @@
 'use client';
 
+
+import { logger } from '@/lib/client/logger';
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCases } from '../context/CaseContext';
@@ -441,7 +443,7 @@ export default function ProcessDashboardPage() {
 
             showToast(`Exported ${filteredCases.length} cases from ${groupedCases.length} companies successfully!`, 'success');
         } catch (error) {
-            console.error('Export error:', error);
+            logger.error('Export error:', error);
             showToast('Failed to export cases', 'error');
         }
     }, [filteredCases, groupedCases, getUserById, showToast]);

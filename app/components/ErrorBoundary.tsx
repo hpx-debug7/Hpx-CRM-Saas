@@ -1,5 +1,7 @@
 'use client';
 
+
+import { logger } from '@/lib/client/logger';
 import React, { Component, ReactNode } from 'react';
 import { debugLogger, DebugCategory } from '../utils/debugLogger';
 
@@ -32,7 +34,7 @@ export default class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBo
   static getDerivedStateFromError(error: Error): Partial<ErrorBoundaryState> {
     // Generate unique error ID
     const errorId = `ERR_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    
+
     return {
       hasError: true,
       error,
@@ -42,7 +44,7 @@ export default class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBo
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     const { onError, level = 'component' } = this.props;
-    
+
     // Update state with error info
     this.setState({
       errorInfo
@@ -60,7 +62,7 @@ export default class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBo
         url: window.location.href
       });
     } catch (logError) {
-      console.error('Failed to log error to debug logger:', logError);
+      logger.error('Failed to log error to debug logger:', logError);
     }
 
     // Call custom error handler if provided
@@ -68,14 +70,14 @@ export default class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBo
       try {
         onError(error, errorInfo);
       } catch (handlerError) {
-        console.error('Error in custom error handler:', handlerError);
+        logger.error('Error in custom error handler:', handlerError);
       }
     }
 
     // Log to console in development
     if (process.env.NODE_ENV === 'development') {
-      console.error('Error Boundary caught an error:', error);
-      console.error('Error Info:', errorInfo);
+      logger.error('Error Boundary caught an error:', error);
+      logger.error('Error Info:', errorInfo);
     }
   }
 
@@ -111,9 +113,9 @@ export default class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBo
     try {
       await navigator.clipboard.writeText(JSON.stringify(errorDetails, null, 2));
       // You could show a toast notification here if available
-      console.log('Error details copied to clipboard');
+      logger.info('Error details copied to clipboard');
     } catch (err) {
-      console.error('Failed to copy error details:', err);
+      logger.error('Failed to copy error details:', err);
     }
   };
 
@@ -169,21 +171,21 @@ export default class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBo
               >
                 Reload Page
               </button>
-              
+
               <button
                 onClick={this.handleGoHome}
                 className="w-full bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 transition-colors"
               >
                 Go to Dashboard
               </button>
-              
+
               <button
                 onClick={this.handleReset}
                 className="w-full bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors"
               >
                 Try Again
               </button>
-              
+
               <button
                 onClick={this.handleCopyErrorDetails}
                 className="w-full bg-gray-200 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-300 transition-colors"

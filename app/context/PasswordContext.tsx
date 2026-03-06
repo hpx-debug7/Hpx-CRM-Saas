@@ -1,5 +1,7 @@
 'use client';
 
+
+import { logger } from '@/lib/client/logger';
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import {
   encryptData,
@@ -121,17 +123,17 @@ export const PasswordProvider: React.FC<{ children: ReactNode }> = ({ children }
           const parsed = JSON.parse(decrypted);
           setPasswords({ ...DEFAULT_PASSWORDS, ...parsed });
         } catch (error) {
-          console.warn('Failed to decrypt passwords, checking for legacy plaintext:', error);
+          logger.warn('Failed to decrypt passwords, checking for legacy plaintext:', error);
           // Fallback: try parsing as plaintext (migration path)
           try {
             const parsed = JSON.parse(savedPasswords);
             setPasswords({ ...DEFAULT_PASSWORDS, ...parsed });
             // Should optionally trigger a re-save here to encrypt it
           } catch (parseError) {
-            console.error('Error loading password config and legacy fallback failed:', parseError);
+            logger.error('Error loading password config and legacy fallback failed:', parseError);
             // Strict Verbatim: On decrypt fail (and assuming invalid data if legacy also fails), remove item
             localStorage.removeItem('leadPasswordConfig');
-            console.warn('Cleared invalid data for leadPasswordConfig');
+            logger.warn('Cleared invalid data for leadPasswordConfig');
             setPasswords(DEFAULT_PASSWORDS);
           }
         }
@@ -142,13 +144,13 @@ export const PasswordProvider: React.FC<{ children: ReactNode }> = ({ children }
           const decrypted = await decryptData(savedAnswers);
           setSecurityAnswers(JSON.parse(decrypted));
         } catch (error) {
-          console.warn('Failed to decrypt security answers, checking for legacy plaintext:', error);
+          logger.warn('Failed to decrypt security answers, checking for legacy plaintext:', error);
           try {
             setSecurityAnswers(JSON.parse(savedAnswers));
           } catch (parseError) {
-            console.error('Error loading security answers and legacy fallback failed:', parseError);
+            logger.error('Error loading security answers and legacy fallback failed:', parseError);
             localStorage.removeItem('leadSecurityAnswers');
-            console.warn('Cleared invalid data for leadSecurityAnswers');
+            logger.warn('Cleared invalid data for leadSecurityAnswers');
           }
         }
       }
@@ -158,7 +160,7 @@ export const PasswordProvider: React.FC<{ children: ReactNode }> = ({ children }
           // Expiry is not currently encrypted as it's not sensitive, but consistent
           setPasswordExpiry(JSON.parse(savedExpiry));
         } catch (error) {
-          console.error('Error loading password expiry:', error);
+          logger.error('Error loading password expiry:', error);
         }
       }
     };
@@ -171,7 +173,7 @@ export const PasswordProvider: React.FC<{ children: ReactNode }> = ({ children }
   // Save passwords to localStorage (Encrypted)
   const savePasswords = async (newPasswords: PasswordConfig) => {
     if (!hasMasterKey()) {
-      console.error('Master key required'); // Verbatim behavior implies error or block
+      logger.error('Master key required'); // Verbatim behavior implies error or block
       throw new Error('Master key required');
     }
     try {
@@ -179,7 +181,7 @@ export const PasswordProvider: React.FC<{ children: ReactNode }> = ({ children }
       localStorage.setItem('leadPasswordConfig', encrypted);
       setPasswords(newPasswords);
     } catch (error) {
-      console.error('Failed to encrypt and save passwords:', error);
+      logger.error('Failed to encrypt and save passwords:', error);
       throw error;
     }
   };
@@ -194,7 +196,7 @@ export const PasswordProvider: React.FC<{ children: ReactNode }> = ({ children }
       localStorage.setItem('leadSecurityAnswers', encrypted);
       setSecurityAnswers(newAnswers);
     } catch (error) {
-      console.error('Failed to encrypt and save security answers:', error);
+      logger.error('Failed to encrypt and save security answers:', error);
       throw error;
     }
   };
@@ -219,7 +221,7 @@ export const PasswordProvider: React.FC<{ children: ReactNode }> = ({ children }
     }
 
     if (masterStatus !== 'ready') {
-      console.error('Cannot change password: Master key not ready');
+      logger.error('Cannot change password: Master key not ready');
       return false;
     }
 

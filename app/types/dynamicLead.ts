@@ -6,6 +6,7 @@
  * when working with dynamic lead properties.
  */
 
+import { logger } from '@/lib/client/logger';
 import type { Lead, ColumnConfig } from './shared';
 
 /**
@@ -160,7 +161,7 @@ export function coerceFieldValue(value: unknown, columnType: ColumnConfig['type'
         return String(value);
     }
   } catch (error) {
-    console.warn(`Failed to coerce value "${value}" to type "${columnType}":`, error);
+    logger.warn(`Failed to coerce value "${value}" to type "${columnType}":`, error);
     return null;
   }
 }

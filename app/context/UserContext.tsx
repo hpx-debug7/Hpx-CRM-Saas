@@ -1,5 +1,7 @@
 'use client';
 
+
+import { logger } from '@/lib/client/logger';
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from 'react';
 import { User, UserRole } from '../types/processTypes';
 import { loginAction, logoutAction, getCurrentUser, changeOwnPasswordAction } from '../actions/auth';
@@ -135,7 +137,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
                 setCurrentUser(null);
             }
         } catch (error) {
-            console.error('Failed to fetch current user:', error);
+            logger.error('Failed to fetch current user:', error);
             setCurrentUser(null);
         }
     }, []);
@@ -160,7 +162,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
             })));
         } catch (error) {
             // User may not be admin, that's fine
-            console.debug('Could not fetch users (may not be admin):', error);
+            logger.debug('Could not fetch users (may not be admin):', error);
             setUsers([]);
         }
     }, []);
@@ -216,7 +218,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
             return { success: result.success, message: result.message };
         } catch (error) {
-            console.error('Login error:', error);
+            logger.error('Login error:', error);
             return { success: false, message: 'Login failed. Please try again.' };
         }
     }, [refreshUsers]);
@@ -229,7 +231,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
             setCurrentPreset(null);
             setResolvedPermissions(BASE_ROLE_DEFAULTS['SALES_EXECUTIVE']);
         } catch (error) {
-            console.error('Logout error:', error);
+            logger.error('Logout error:', error);
             setCurrentUser(null);
         }
     }, []);
@@ -256,7 +258,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
             return { success: result.success, message: result.message };
         } catch (error) {
-            console.error('Create user error:', error);
+            logger.error('Create user error:', error);
             return { success: false, message: 'Failed to create user' };
         }
     }, [refreshUsers]);
@@ -279,7 +281,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
             return { success: result.success, message: result.message };
         } catch (error) {
-            console.error('Update user error:', error);
+            logger.error('Update user error:', error);
             return { success: false, message: 'Failed to update user' };
         }
     }, [refreshUsers]);
@@ -294,7 +296,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
             return { success: result.success, message: result.message };
         } catch (error) {
-            console.error('Delete user error:', error);
+            logger.error('Delete user error:', error);
             return { success: false, message: 'Failed to delete user' };
         }
     }, [refreshUsers]);
@@ -309,7 +311,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
             return result;
         } catch (error) {
-            console.error('Reset password error:', error);
+            logger.error('Reset password error:', error);
             return { success: false, message: 'Failed to reset password' };
         }
     }, [refreshUsers]);
@@ -318,7 +320,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
         try {
             return await changeOwnPasswordAction(currentPassword, newPassword);
         } catch (error) {
-            console.error('Change own password error:', error);
+            logger.error('Change own password error:', error);
             return { success: false, message: 'Failed to change password' };
         }
     }, []);
@@ -423,7 +425,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
                 userCount: p.userCount,
             }));
         } catch (error) {
-            console.error('Get presets error:', error);
+            logger.error('Get presets error:', error);
             return [];
         }
     }, []);
@@ -432,7 +434,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
         try {
             return await createPresetAction(data);
         } catch (error) {
-            console.error('Create preset error:', error);
+            logger.error('Create preset error:', error);
             return { success: false, message: 'Failed to create preset' };
         }
     }, []);
@@ -441,7 +443,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
         try {
             return await updatePresetAction(id, data);
         } catch (error) {
-            console.error('Update preset error:', error);
+            logger.error('Update preset error:', error);
             return { success: false, message: 'Failed to update preset' };
         }
     }, []);
@@ -450,7 +452,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
         try {
             return await deletePresetAction(id);
         } catch (error) {
-            console.error('Delete preset error:', error);
+            logger.error('Delete preset error:', error);
             return { success: false, message: 'Failed to delete preset' };
         }
     }, []);
@@ -459,7 +461,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
         try {
             return await duplicatePresetAction(id);
         } catch (error) {
-            console.error('Duplicate preset error:', error);
+            logger.error('Duplicate preset error:', error);
             return { success: false, message: 'Failed to duplicate preset' };
         }
     }, []);

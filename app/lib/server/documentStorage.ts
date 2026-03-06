@@ -1,7 +1,8 @@
 import { promises as fs } from 'fs';
 import path from 'path';
 import crypto from 'crypto';
-import { env } from '@/lib/env';
+import { getEnv } from '@/lib/server/env';
+const env = getEnv();
 
 export interface StoredDocumentMeta {
     id: string;

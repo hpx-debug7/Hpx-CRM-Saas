@@ -1,5 +1,7 @@
 'use client';
 
+
+import { logger } from '@/lib/client/logger';
 import React, { ReactNode } from 'react';
 import ErrorBoundary from './ErrorBoundary';
 import { restoreFromBackup, hasBackup } from '../utils/storage';
@@ -21,8 +23,8 @@ export default function PageErrorBoundary({
   
   const handlePageError = (error: Error, errorInfo: React.ErrorInfo) => {
     // Log page-specific error context
-    console.error(`Error in ${pageName} page:`, error);
-    console.error('Error Info:', errorInfo);
+    logger.error(`Error in ${pageName} page:`, error);
+    logger.error('Error Info:', errorInfo);
   };
 
   const handleRestoreBackup = async () => {
@@ -51,7 +53,7 @@ export default function PageErrorBoundary({
       }
     } catch (error) {
       storageNotifications.notify('Failed to restore from backup. Please try again.', 'error');
-      console.error('Backup restore failed:', error);
+      logger.error('Backup restore failed:', error);
     }
   };
 
@@ -76,7 +78,7 @@ export default function PageErrorBoundary({
         }, 2000);
       } catch (error) {
         storageNotifications.notify('Failed to clear data. Please try again.', 'error');
-        console.error('Clear data failed:', error);
+        logger.error('Clear data failed:', error);
       }
     }
   };

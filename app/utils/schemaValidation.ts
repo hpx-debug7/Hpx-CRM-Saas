@@ -1,5 +1,7 @@
 'use client';
 
+
+import { logger } from '@/lib/client/logger';
 import type { Lead, MobileNumber, Activity, SavedView, LeadFilters } from '../types/shared';
 import type { ColumnConfig } from '../types/shared';
 import { HeaderConfig } from '../context/HeaderContext';
@@ -684,7 +686,7 @@ export function validateColumnConfigArray(data: any): ValidationResult {
   
   data.forEach((config: any, index: number) => {
     const configValidation = validateColumnConfigFields(config);
-    // console.debug('validateColumnConfigFields result', index, configValidation);
+    // logger.debug('validateColumnConfigFields result', index, configValidation);
     if (configValidation.valid) {
       validConfigs++;
 
@@ -831,7 +833,7 @@ export function repairLead(lead: any): Lead | null {
     
     return repaired as Lead;
   } catch (error) {
-    console.error('Error repairing lead:', error);
+    logger.error('Error repairing lead:', error);
     return null;
   }
 }
@@ -907,7 +909,7 @@ export function repairColumnConfig(config: any): ColumnConfig | null {
     
     return repaired as ColumnConfig;
   } catch (error) {
-    console.error('Error repairing column config:', error);
+    logger.error('Error repairing column config:', error);
     return null;
   }
 }

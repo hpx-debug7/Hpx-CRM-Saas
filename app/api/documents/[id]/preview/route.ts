@@ -1,3 +1,4 @@
+import { logger } from '@/lib/server/logger';
 import { promises as fs } from 'fs';
 import path from 'path';
 import { NextResponse } from 'next/server';
@@ -34,7 +35,7 @@ export async function GET(_req: Request, context: { params: Promise<{ id: string
         ) {
             return NextResponse.json({ error: 'File not found on server.' }, { status: 404 });
         }
-        console.error('Document preview failed:', error);
+        logger.error('Document preview failed:', error);
         return NextResponse.json({ error: 'Failed to preview document' }, { status: 500 });
     }
 }

@@ -7,11 +7,12 @@
 
 import { describe, test, expect, beforeAll, afterEach } from 'vitest';
 import { SignJWT } from 'jose';
-import { prisma } from '@/lib/db';
-import { env } from '@/lib/env';
+import { prisma } from '@/lib/server/db';
+import { getEnv } from '@/lib/server/env';
+const env = getEnv();
 import { loginAction } from '@/app/actions/auth';
-import { getValidatedSession, generateSessionToken, verifySessionToken } from '@/lib/auth';
-import { tenantScope } from '@/lib/tenantScope';
+import { getValidatedSession, generateSessionToken, verifySessionToken } from '@/lib/server/auth';
+import { tenantScope } from '@/lib/server/tenantScope';
 import { cookies } from 'next/headers';
 
 describe('Multi-Tenant Isolation Security Tests', () => {

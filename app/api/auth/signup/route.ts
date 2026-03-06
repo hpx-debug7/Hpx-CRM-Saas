@@ -5,10 +5,11 @@
  * user creation.
  */
 
+import { logger } from '@/lib/server/logger';
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
-import { hashPassword, validatePasswordStrength } from '@/lib/auth';
-import { signupSchema, formatValidationError } from '@/lib/validations/auth';
+import { prisma } from '@/lib/server/db';
+import { hashPassword, validatePasswordStrength } from '@/lib/server/auth';
+import { signupSchema, formatValidationError } from '@/lib/shared/validations/auth';
 
 export async function POST(request: NextRequest) {
     try {
@@ -106,7 +107,7 @@ export async function POST(request: NextRequest) {
             { status: 201 }
         );
     } catch (error) {
-        console.error('Signup route error:', error);
+        logger.error('Signup route error:', error);
         return NextResponse.json(
             { error: 'Internal server error', message: 'An unexpected error occurred' },
             { status: 500 }

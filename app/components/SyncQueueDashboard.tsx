@@ -1,5 +1,7 @@
 'use client';
 
+
+import { logger } from '@/lib/client/logger';
 import React, { useState, useEffect } from 'react';
 import { useOfflineStatus } from '@/app/context/OfflineContext';
 import {
@@ -39,7 +41,7 @@ export function SyncQueueDashboard() {
       const items = await getPendingQueue();
       setPendingItems(items as PendingItem[]);
     } catch (error) {
-      console.error('Failed to load pending items:', error);
+      logger.error('Failed to load pending items:', error);
     } finally {
       setIsLoading(false);
     }

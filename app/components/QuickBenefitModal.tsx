@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Edit3 } from 'lucide-react';
 import BenefitsModal from './BenefitsModal';

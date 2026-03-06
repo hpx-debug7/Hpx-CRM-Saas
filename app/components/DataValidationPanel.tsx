@@ -1,5 +1,7 @@
 'use client';
 
+
+import { logger } from '@/lib/client/logger';
 import React, { useState, useEffect } from 'react';
 import { useLeads } from '../context/LeadContext';
 import { useColumns } from '../context/ColumnContext';
@@ -106,7 +108,7 @@ const DataValidationPanel: React.FC = () => {
       });
 
     } catch (error) {
-      console.error('Error loading initial data:', error);
+      logger.error('Error loading initial data:', error);
       storageNotifications.notify('Error loading validation data', 'error');
     } finally {
       setIsLoading(false);

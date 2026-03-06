@@ -1,3 +1,4 @@
+import { logger } from '@/lib/server/logger';
 import { NextResponse } from 'next/server';
 import { deleteStoredDocument } from '../../../lib/server/documentStorage';
 
@@ -47,7 +48,7 @@ export async function DELETE(req: Request, context: { params: Promise<{ id: stri
             }
         });
     } catch (error) {
-        console.error('Document delete failed:', error);
+        logger.error('Document delete failed:', error);
         return NextResponse.json({ error: 'Failed to delete document' }, { status: 500 });
     }
 }

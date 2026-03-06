@@ -1,11 +1,13 @@
 'use server';
 
-import { prisma } from '@/lib/db';
+
+import { logger } from '@/lib/server/logger';
+import { prisma } from '@/lib/server/db';
 import { requireRole } from './auth';
 import { addServerAuditLog } from './audit';
 import { resolvePermissions, hasPermission as hasPermissionUtil, PermissionKey } from '../utils/permissions';
 import { UserRole } from '../types/processTypes';
-import { getSession } from '@/lib/auth';
+import { getSession } from '@/lib/server/auth';
 
 // ============================================================================
 // PRESET CRUD SERVER ACTIONS
@@ -17,8 +19,8 @@ export interface PresetData {
     description: string | null;
     permissions: string;
     isSystem: boolean;
-    createdAt: Date;
-    updatedAt: Date;
+    createdAt: string;
+    updatedAt: string;
     createdById: string | null;
     userCount: number;
 }
@@ -39,7 +41,12 @@ export async function getPresets(): Promise<PresetData[]> {
             const userCount = await prisma.user.count({
                 where: { rolePresetId: preset.id },
             });
-            return { ...preset, userCount };
+            return {
+                ...preset,
+                createdAt: preset.createdAt.toISOString(),
+                updatedAt: preset.updatedAt.toISOString(),
+                userCount
+            };
         })
     );
 
@@ -76,6 +83,7 @@ export async function createPresetAction(data: {
 
         const preset = await prisma.rolePreset.create({
             data: {
+                companyId: session.companyId,
                 name: data.name,
                 description: data.description || null,
                 permissions: data.permissions,
@@ -95,7 +103,7 @@ export async function createPresetAction(data: {
 
         return { success: true, message: 'Preset created successfully' };
     } catch (error) {
-        console.error('Create preset error:', error);
+        logger.error('Create preset error:', error);
         return { success: false, message: 'Failed to create preset' };
     }
 }
@@ -139,7 +147,7 @@ export async function updatePresetAction(
 
         return { success: true, message: 'Preset updated successfully' };
     } catch (error) {
-        console.error('Update preset error:', error);
+        logger.error('Update preset error:', error);
         return { success: false, message: 'Failed to update preset' };
     }
 }
@@ -179,7 +187,7 @@ export async function deletePresetAction(id: string): Promise<{ success: boolean
 
         return { success: true, message: 'Preset deleted successfully' };
     } catch (error) {
-        console.error('Delete preset error:', error);
+        logger.error('Delete preset error:', error);
         return { success: false, message: 'Failed to delete preset' };
     }
 }
@@ -198,6 +206,7 @@ export async function duplicatePresetAction(id: string): Promise<{ success: bool
 
         const newPreset = await prisma.rolePreset.create({
             data: {
+                companyId: session.companyId,
                 name: `Copy of ${source.name}`,
                 description: source.description,
                 permissions: source.permissions,
@@ -217,7 +226,7 @@ export async function duplicatePresetAction(id: string): Promise<{ success: bool
 
         return { success: true, message: 'Preset duplicated successfully' };
     } catch (error) {
-        console.error('Duplicate preset error:', error);
+        logger.error('Duplicate preset error:', error);
         return { success: false, message: 'Failed to duplicate preset' };
     }
 }

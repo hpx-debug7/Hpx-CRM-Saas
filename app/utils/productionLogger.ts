@@ -1,3 +1,4 @@
+import { logger } from '@/lib/client/logger';
 'use client';
 
 /**
@@ -139,21 +140,21 @@ export const productionLogger = {
      * Log informational message (safe for production)
      */
     info: (...args: any[]) => {
-        console.log('[INFO]', ...formatArgs(args));
+        logger.info('[INFO]', ...formatArgs(args));
     },
 
     /**
      * Log warning message (safe for production)
      */
     warn: (...args: any[]) => {
-        console.warn('[WARN]', ...formatArgs(args));
+        logger.warn('[WARN]', ...formatArgs(args));
     },
 
     /**
      * Log error message (safe for production)
      */
     error: (...args: any[]) => {
-        console.error('[ERROR]', ...formatArgs(args));
+        logger.error('[ERROR]', ...formatArgs(args));
     },
 
     /**
@@ -161,7 +162,7 @@ export const productionLogger = {
      */
     debug: (...args: any[]) => {
         if (isDevelopment()) {
-            console.debug('[DEBUG]', ...formatArgs(args));
+            logger.debug('[DEBUG]', ...formatArgs(args));
         }
     },
 
@@ -170,7 +171,7 @@ export const productionLogger = {
      */
     logLead: (action: string, lead: any) => {
         if (isDevelopment()) {
-            console.log(`[LEAD] ${action}:`, lead);
+            logger.info(`[LEAD] ${action}:`, lead);
         } else {
             // In production, only log non-sensitive lead info
             const safeLead = {
@@ -180,7 +181,7 @@ export const productionLogger = {
                 isDone: lead?.isDone,
                 isDeleted: lead?.isDeleted
             };
-            console.log(`[LEAD] ${action}:`, safeLead);
+            logger.info(`[LEAD] ${action}:`, safeLead);
         }
     },
 

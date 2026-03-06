@@ -1,5 +1,7 @@
 'use client';
 
+
+import { logger } from '@/lib/client/logger';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { useUsers } from '../context/UserContext';
@@ -66,7 +68,7 @@ export default function UsersPage() {
             const fetched = await getPresets();
             setPresets(fetched);
         } catch {
-            console.error('Failed to load presets');
+            logger.error('Failed to load presets');
         } finally {
             setPresetsLoading(false);
         }

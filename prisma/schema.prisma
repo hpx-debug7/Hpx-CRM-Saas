@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
   output   = "../node_modules/.prisma/client"
@@ -10,149 +7,118 @@ datasource db {
   provider = "postgresql"
 }
 
-// ============================================================================
-// COMPANY/TENANT MODEL (Multi-Tenant Root)
-// ============================================================================
-
 model Company {
-  id            String    @id @default(cuid())
-  name          String    @unique
-  slug          String    @unique
-  domain        String?
-  logo          String?
-  isActive      Boolean   @default(true)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-
-  // Relations
-  users                User[]
-  sessions             Session[]
-  leads                Lead[]
-  auditLogs            AuditLog[]
-  savedViews           SavedView[]
-  rolePresets          RolePreset[]
-  emailAccounts        EmailAccount[]
-  emailThreads         EmailThread[]
-  emailMessages        EmailMessage[]
-  emailAttachments     EmailAttachment[]
-  emailWebhookStates   EmailWebhookState[]
-  emailSendAudits      EmailSendAudit[]
-  emailThreadLeads     EmailThreadLead[]
-  syncQueue            SyncQueue[]
-  emailQueue           EmailQueue[]
-  conflictLogs         ConflictLog[]
-  syncCheckpoints      SyncCheckpoint[]
+  id                 String              @id @default(cuid())
+  name               String              @unique
+  slug               String              @unique
+  domain             String?
+  logo               String?
+  isActive           Boolean             @default(true)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  auditLogs          AuditLog[]
+  conflictLogs       ConflictLog[]
+  emailAccounts      EmailAccount[]
+  emailAttachments   EmailAttachment[]
+  emailMessages      EmailMessage[]
+  emailQueue         EmailQueue[]
+  emailSendAudits    EmailSendAudit[]
+  emailThreadLeads   EmailThreadLead[]
+  emailThreads       EmailThread[]
+  emailWebhookStates EmailWebhookState[]
+  leads              Lead[]
+  rolePresets        RolePreset[]
+  savedViews         SavedView[]
+  sessions           Session[]
+  syncCheckpoints    SyncCheckpoint[]
+  syncQueue          SyncQueue[]
+  users              User[]
 
   @@map("companies")
 }
 
-// ============================================================================
-// USER & SESSION MODELS
-// ============================================================================
-
 model User {
-  id            String    @id @default(cuid())
-  companyId     String
-  company       Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  username      String
-  name          String
-  email         String
-  password      String    // bcrypt hashed password
-  role          String    @default("SALES_EXECUTIVE") // ADMIN, SALES_MANAGER, SALES_EXECUTIVE, PROCESS_MANAGER, PROCESS_EXECUTIVE
-  isActive      Boolean   @default(true)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  lastLoginAt   DateTime?
-
-  // Password reset tracking
+  id                    String              @id @default(cuid())
+  companyId             String
+  username              String
+  name                  String
+  email                 String
+  password              String
+  role                  String              @default("SALES_EXECUTIVE")
+  isActive              Boolean             @default(true)
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  lastLoginAt           DateTime?
   passwordLastChangedAt DateTime?
-  failedLoginAttempts   Int       @default(0)
+  failedLoginAttempts   Int                 @default(0)
   lockedUntil           DateTime?
-  stickyLeadTableHeader Boolean   @default(true)
-
-  // Permission system
+  stickyLeadTableHeader Boolean             @default(true)
   rolePresetId          String?
   customPermissions     String?
+  auditLogs             AuditLog[]          @relation("PerformedBy")
+  emailAccounts         EmailAccount[]
+  emailMessages         EmailMessage[]
+  emailSendAudits       EmailSendAudit[]
+  emailThreads          EmailThread[]
+  emailWebhookStates    EmailWebhookState[]
+  leads                 Lead[]              @relation("AssignedTo")
+  createdLeads          Lead[]              @relation("CreatedBy")
+  sessions              Session[]
+  company               Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
-  // Relations
-  sessions      Session[]
-  auditLogs     AuditLog[]  @relation("PerformedBy")
-  leads         Lead[]      @relation("AssignedTo")
-  createdLeads  Lead[]      @relation("CreatedBy")
-  emailAccounts      EmailAccount[]
-  emailThreads       EmailThread[]
-  emailMessages      EmailMessage[]
-  emailWebhookStates EmailWebhookState[]
-  emailSendAudits    EmailSendAudit[]
-
-  @@map("users")
   @@unique([companyId, username])
   @@unique([companyId, email])
   @@index([companyId])
+  @@map("users")
 }
 
 model Session {
-  id            String    @id @default(cuid())
-  companyId     String
-  company       Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  userId        String
-  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  token         String    @unique // Session token (for cookie validation)
-  userAgent     String?
-  ipAddress     String?
-  createdAt     DateTime  @default(now())
-  expiresAt     DateTime
+  id             String   @id @default(cuid())
+  companyId      String
+  userId         String
+  token          String   @unique
+  userAgent      String?
+  ipAddress      String?
+  createdAt      DateTime @default(now())
+  expiresAt      DateTime
   lastActivityAt DateTime @default(now())
-  isValid       Boolean   @default(true)
+  isValid        Boolean  @default(true)
+  company        Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@map("sessions")
   @@index([companyId])
   @@index([userId])
   @@index([token])
+  @@map("sessions")
 }
 
-// ============================================================================
-// LEAD MODEL
-// ============================================================================
-
 model Lead {
-  id                  String    @id @default(cuid())
-  companyId           String
-  company             Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  id               String            @id @default(cuid())
+  companyId        String
+  firstName        String?
+  lastName         String?
+  email            String?
+  phone            String?
+  companyName      String?
+  source           String?
+  status           String            @default("NEW")
+  notes            String?
+  customFields     String?           @default("{}")
+  assignedToId     String?
+  createdById      String?
+  syncVersion      Int               @default(0)
+  lastSyncedAt     DateTime?
+  isDirty          Boolean           @default(false)
+  syncStatus       String            @default("SYNCED")
+  deviceId         String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  convertedAt      DateTime?
+  emailThreadLinks EmailThreadLead[]
+  assignedTo       User?             @relation("AssignedTo", fields: [assignedToId], references: [id])
+  company          Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdBy        User?             @relation("CreatedBy", fields: [createdById], references: [id])
 
-  // Core Lead Data
-  firstName           String?
-  lastName            String?
-  email               String?
-  phone               String?
-  companyName         String?
-  source              String?   // e.g., "Web", "Referral", "Cold Call"
-  status              String    @default("NEW") // NEW, CONTACTED, QUALIFIED, PROPOSAL, NEGOTIATION, WON, LOST
-  notes               String?
-
-  // Simple JSON field for extended/custom data
-  customFields        String?   @default("{}") // JSON string for flexibility
-
-  // Assignment and tracking
-  assignedToId        String?
-  assignedTo          User?     @relation("AssignedTo", fields: [assignedToId], references: [id])
-  createdById         String?
-  createdBy           User?     @relation("CreatedBy", fields: [createdById], references: [id])
-
-  // Sync metadata for offline-first support
-  syncVersion         Int       @default(0)              // Incrementing version number
-  lastSyncedAt        DateTime?                          // When last synced to server
-  isDirty             Boolean   @default(false)          // Has unsync'd changes
-  syncStatus          String    @default("SYNCED")       // PENDING, SYNCING, SYNCED, FAILED
-  deviceId            String?                            // Which device made the change
-
-  // Timestamps
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
-  convertedAt         DateTime?
-  emailThreadLinks    EmailThreadLead[]
-
-  @@map("leads")
   @@index([companyId])
   @@index([status])
   @@index([assignedToId])
@@ -160,47 +126,31 @@ model Lead {
   @@index([syncStatus])
   @@index([companyId, status])
   @@index([companyId, assignedToId])
+  @@map("leads")
 }
 
-// ============================================================================
-// AUDIT LOG MODEL (Append-Only)
-// ============================================================================
-
 model AuditLog {
-  id                String    @id @default(cuid())
-  companyId         String
-  company           Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  id              String   @id @default(cuid())
+  companyId       String
+  actionType      String
+  entityType      String?
+  entityId        String?
+  description     String
+  performedById   String?
+  performedByName String?
+  ipAddress       String?
+  userAgent       String?
+  sessionId       String?
+  beforeValue     String?  @default("{}")
+  afterValue      String?  @default("{}")
+  changesSummary  String?
+  metadata        String?  @default("{}")
+  previousHash    String?
+  hash            String?
+  createdAt       DateTime @default(now())
+  company         Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  performedBy     User?    @relation("PerformedBy", fields: [performedById], references: [id])
 
-  // Action details
-  actionType        String    // USER_LOGIN, USER_LOGOUT, LEAD_CREATED, etc.
-  entityType        String?   // user, lead, session, etc.
-  entityId          String?
-  description       String
-
-  // Who performed the action
-  performedById     String?
-  performedBy       User?     @relation("PerformedBy", fields: [performedById], references: [id])
-  performedByName   String?
-
-  // Context
-  ipAddress         String?
-  userAgent         String?
-  sessionId         String?
-
-  // Data snapshots
-  beforeValue       String?   @default("{}") // JSON snapshot
-  afterValue        String?   @default("{}") // JSON snapshot
-  changesSummary    String?
-  metadata          String?   @default("{}") // JSON
-
-  // Integrity (for hash chaining)
-  previousHash      String?
-  hash              String?   // SHA-256 of (previousHash + data)
-
-  // Timestamp (immutable)
-  createdAt         DateTime  @default(now())
-
-  @@map("audit_logs")
   @@index([companyId])
   @@index([actionType])
   @@index([entityType, entityId])
@@ -208,249 +158,229 @@ model AuditLog {
   @@index([createdAt])
   @@index([companyId, actionType])
   @@index([companyId, createdAt])
+  @@map("audit_logs")
 }
 
-// ============================================================================
-// SAVED VIEW MODEL (for column configs etc.)
-// ============================================================================
-
 model SavedView {
-  id          String    @id @default(cuid())
+  id          String   @id @default(cuid())
   companyId   String
-  company     Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
   name        String
   description String?
-  config      String    // JSON string for column config, filters, etc.
-  isDefault   Boolean   @default(false)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  config      String
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
-  @@map("saved_views")
-  @@index([companyId])
   @@unique([companyId, name])
+  @@index([companyId])
+  @@map("saved_views")
 }
 
 model RolePreset {
-  id          String    @id @default(cuid())
+  id          String   @id @default(cuid())
   companyId   String
-  company     Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
   name        String
   description String?
-  permissions String    // JSON string of Record<PermissionKey, boolean>
-  isSystem    Boolean   @default(false)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  permissions String
+  isSystem    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
   createdById String?
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
-  @@map("role_presets")
-  @@index([companyId])
   @@unique([companyId, name])
+  @@index([companyId])
+  @@map("role_presets")
 }
 
-// ============================================================================
-// EMAIL MODELS
-// ============================================================================
-
 model EmailAccount {
-  id                   String   @id @default(cuid())
-  companyId            String
-  company              Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  userId               String
-  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  provider             String   // gmail | outlook
-  emailAddress         String
-  providerAccountId    String?
-  accessTokenEncrypted String
+  id                    String    @id @default(cuid())
+  companyId             String
+  userId                String
+  provider              String
+  emailAddress          String
+  providerAccountId     String?
+  accessTokenEncrypted  String
   refreshTokenEncrypted String?
-  tokenExpiresAt       DateTime?
-  status               String   @default("ACTIVE") // ACTIVE, DISCONNECTED, ERROR
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+  tokenExpiresAt        DateTime?
+  status                String    @default("ACTIVE")
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  company               Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@map("email_accounts")
+  @@unique([userId, provider])
   @@index([companyId])
   @@index([userId, provider])
-  @@unique([userId, provider])
   @@index([emailAddress])
   @@index([companyId, userId])
+  @@map("email_accounts")
 }
 
 model EmailThread {
-  id                String   @id @default(cuid())
-  companyId         String
-  company           Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  userId            String
-  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  provider          String
-  providerThreadId  String
-  subject           String?
-  snippet           String?
-  lastMessageAt     DateTime?
-  unreadCount       Int      @default(0)
-  hasAttachments    Boolean  @default(false)
-  folder            String?  // inbox | sent | archive (best-effort)
-  leadId            String?
+  id               String            @id @default(cuid())
+  companyId        String
+  userId           String
+  provider         String
+  providerThreadId String
+  subject          String?
+  snippet          String?
+  lastMessageAt    DateTime?
+  unreadCount      Int               @default(0)
+  hasAttachments   Boolean           @default(false)
+  folder           String?
+  leadId           String?
+  syncVersion      Int               @default(0)
+  isDirty          Boolean           @default(false)
+  lastSyncedAt     DateTime?
+  syncStatus       String            @default("SYNCED")
+  deviceId         String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  messages         EmailMessage[]
+  sendAudits       EmailSendAudit[]
+  threadLeads      EmailThreadLead[]
+  company          Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  // Sync metadata
-  syncVersion       Int      @default(0)
-  isDirty           Boolean  @default(false)
-  lastSyncedAt      DateTime?
-  syncStatus        String   @default("SYNCED")
-  deviceId          String?
-
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-
-  messages           EmailMessage[]
-  threadLeads        EmailThreadLead[]
-  sendAudits         EmailSendAudit[]
-
-  @@map("email_threads")
+  @@unique([userId, provider, providerThreadId])
   @@index([companyId])
   @@index([userId, provider, providerThreadId])
   @@index([lastMessageAt])
   @@index([leadId])
   @@index([isDirty])
-  @@unique([userId, provider, providerThreadId])
   @@index([companyId, userId])
   @@index([companyId, isDirty])
+  @@map("email_threads")
 }
 
 model EmailMessage {
-  id                 String   @id @default(cuid())
-  companyId          String
-  company            Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  threadId           String
-  thread             EmailThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
-  userId             String
-  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  provider           String
-  providerMessageId  String
-  from               String?
-  to                 String?
-  cc                 String?
-  bcc                String?
-  subject            String?
-  snippet            String?
-  sentAt             DateTime?
-  isRead             Boolean  @default(false)
-  hasAttachments     Boolean  @default(false)
-  attachmentsMeta    String?  // JSON string
-
-  // Sync metadata
-  syncVersion           Int      @default(0)
-  isDirty           Boolean  @default(false)
+  id                String            @id @default(cuid())
+  companyId         String
+  threadId          String
+  userId            String
+  provider          String
+  providerMessageId String
+  from              String?
+  to                String?
+  cc                String?
+  bcc               String?
+  subject           String?
+  snippet           String?
+  sentAt            DateTime?
+  isRead            Boolean           @default(false)
+  hasAttachments    Boolean           @default(false)
+  attachmentsMeta   String?
+  syncVersion       Int               @default(0)
+  isDirty           Boolean           @default(false)
   lastSyncedAt      DateTime?
-  syncStatus        String   @default("SYNCED")
+  syncStatus        String            @default("SYNCED")
   deviceId          String?
+  createdAt         DateTime          @default(now())
+  attachments       EmailAttachment[]
+  company           Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  thread            EmailThread       @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  createdAt          DateTime @default(now())
-
-  attachments         EmailAttachment[]
-
-  @@map("email_messages")
+  @@unique([userId, provider, providerMessageId])
   @@index([companyId])
   @@index([threadId])
   @@index([userId])
   @@index([sentAt])
   @@index([isDirty])
-  @@unique([userId, provider, providerMessageId])
   @@index([companyId, userId])
   @@index([companyId, isDirty])
+  @@map("email_messages")
 }
 
 model EmailAttachment {
-  id                   String   @id @default(cuid())
+  id                   String       @id @default(cuid())
   companyId            String
-  company              Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   messageId            String
-  message              EmailMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
   filename             String?
   mimeType             String?
   size                 Int?
   providerAttachmentId String?
+  company              Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  message              EmailMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
 
-  @@map("email_attachments")
   @@index([companyId])
   @@index([messageId])
+  @@map("email_attachments")
 }
 
 model EmailWebhookState {
-  id            String   @id @default(cuid())
-  companyId     String
-  company       Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  userId        String
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  provider      String   // gmail | outlook
-  lastHistoryId String?
+  id             String   @id @default(cuid())
+  companyId      String
+  userId         String
+  provider       String
+  lastHistoryId  String?
   lastDeltaToken String?
-  updatedAt     DateTime @updatedAt
+  updatedAt      DateTime @updatedAt
+  company        Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@map("email_webhook_state")
   @@unique([userId, provider])
   @@index([userId, provider])
   @@index([companyId, userId])
   @@index([companyId])
+  @@map("email_webhook_state")
 }
 
 model EmailSendAudit {
-  id         String   @id @default(cuid())
-  companyId  String
-  company    Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  userId     String
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  threadId   String?
-  thread     EmailThread? @relation(fields: [threadId], references: [id], onDelete: SetNull)
-  provider   String
-  to         String?
-  subject    String?
-  sentAt     DateTime?
-  messageId  String?
-  createdAt  DateTime @default(now())
+  id        String       @id @default(cuid())
+  companyId String
+  userId    String
+  threadId  String?
+  provider  String
+  to        String?
+  subject   String?
+  sentAt    DateTime?
+  messageId String?
+  createdAt DateTime     @default(now())
+  company   Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  thread    EmailThread? @relation(fields: [threadId], references: [id])
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@map("email_send_audit")
   @@index([companyId])
   @@index([userId])
   @@index([threadId])
   @@index([companyId, userId])
+  @@map("email_send_audit")
 }
 
 model EmailThreadLead {
-  id        String   @id @default(cuid())
+  id        String      @id @default(cuid())
   companyId String
-  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   threadId  String
-  thread    EmailThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
   leadId    String
-  lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
+  createdAt DateTime    @default(now())
+  company   Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  lead      Lead        @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  thread    EmailThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
 
-  @@map("email_thread_leads")
+  @@unique([companyId, threadId, leadId])
   @@index([companyId])
   @@index([threadId])
   @@index([leadId])
-  @@unique([companyId, threadId, leadId])
+  @@map("email_thread_leads")
 }
 
-// ============================================================================
-// SYNC INFRASTRUCTURE MODELS
-// ============================================================================
-
 model SyncQueue {
-  id           String   @id @default(cuid())
-  companyId    String
-  company      Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  entityType   String   // "Lead", "EmailMessage", "EmailThread", "Case", etc.
-  entityId     String   // The actual entity ID
-  operation    String   // CREATE, UPDATE, DELETE
-  payload      String   // JSON: Full entity data for CREATE/UPDATE, {id} for DELETE
-  createdAt    DateTime @default(now())
-  syncedAt     DateTime?
-  retryCount   Int      @default(0)
-  lastError    String?
-  priority     Int      @default(0)  // Higher = sync first
+  id         String    @id @default(cuid())
+  companyId  String
+  entityType String
+  entityId   String
+  operation  String
+  payload    String
+  createdAt  DateTime  @default(now())
+  syncedAt   DateTime?
+  retryCount Int       @default(0)
+  lastError  String?
+  priority   Int       @default(0)
+  company    Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
-  @@map("sync_queue")
   @@index([companyId])
   @@index([syncedAt])
   @@index([operation])
@@ -458,70 +388,71 @@ model SyncQueue {
   @@index([entityType])
   @@index([companyId, syncedAt])
   @@index([companyId, operation])
+  @@map("sync_queue")
 }
 
 model EmailQueue {
-  id              String   @id @default(cuid())
-  companyId       String
-  company         Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  userId          String
-  to              String
-  subject         String
-  body            String
-  cc              String?
-  bcc             String?
-  linkedLeadId    String?
-  fromAccountId   String?
-  attachments     String?  // JSON array of file paths
-  createdAt       DateTime @default(now())
-  syncedAt        DateTime?
-  status          String   @default("DRAFT")  // DRAFT, QUEUED, SENDING, SENT, FAILED
-  error           String?
-  retryCount      Int      @default(0)
+  id            String    @id @default(cuid())
+  companyId     String
+  userId        String
+  to            String
+  subject       String
+  body          String
+  cc            String?
+  bcc           String?
+  linkedLeadId  String?
+  fromAccountId String?
+  attachments   String?
+  createdAt     DateTime  @default(now())
+  syncedAt      DateTime?
+  status        String    @default("DRAFT")
+  error         String?
+  retryCount    Int       @default(0)
+  company       Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
-  @@map("email_queue")
   @@index([companyId])
   @@index([userId])
   @@index([status])
   @@index([syncedAt])
   @@index([companyId, status])
   @@index([companyId, userId])
+  @@map("email_queue")
 }
 
 model ConflictLog {
-  id              String   @id @default(cuid())
-  companyId       String
-  company         Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  entityType      String   // "Lead", "EmailMessage", "EmailThread"
-  entityId        String
-  localVersion    Int
-  serverVersion   Int
-  resolution      String?  // ACCEPT_LOCAL, ACCEPT_SERVER, MERGE
-  resolvedAt      DateTime?
-  localData       String   // JSON
-  serverData      String   // JSON
-  createdAt       DateTime @default(now())
+  id            String    @id @default(cuid())
+  companyId     String
+  entityType    String
+  entityId      String
+  localVersion  Int
+  serverVersion Int
+  resolution    String?
+  resolvedAt    DateTime?
+  localData     String
+  serverData    String
+  createdAt     DateTime  @default(now())
+  company       Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
-  @@map("conflict_logs")
   @@index([companyId])
   @@index([entityType, entityId])
   @@index([resolvedAt])
   @@index([companyId, entityType])
+  @@map("conflict_logs")
 }
 
 model SyncCheckpoint {
-  id              String   @id @default(cuid())
+  id              String    @id @default(cuid())
   companyId       String
-  company         Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  entityType      String   // "Lead", "EmailMessage", "EmailThread", "Case"
-  lastSyncVersion Int      @default(0)
+  entityType      String
+  lastSyncVersion Int       @default(0)
   lastSyncTime    DateTime?
   deviceId        String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  company         Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
-  @@map("sync_checkpoints")
   @@unique([companyId, entityType, deviceId])
   @@index([companyId])
   @@index([entityType])
+  @@map("sync_checkpoints")
 }

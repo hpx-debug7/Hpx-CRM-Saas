@@ -1,5 +1,7 @@
 'use server';
 
+
+import { logger } from '@/lib/server/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { getValidatedSession } from './auth';
 
@@ -62,7 +64,7 @@ export function secureHandler<T extends NextRequest>(
                 session = await getValidatedSession();
             } catch (error) {
                 const message = error instanceof Error ? error.message : 'Unauthorized';
-                console.warn(`[SECURITY] Session validation failed: ${message}`);
+                logger.warn(`[SECURITY] Session validation failed: ${message}`);
                 return NextResponse.json(
                     { error: message },
                     { status: 401 },
@@ -71,7 +73,7 @@ export function secureHandler<T extends NextRequest>(
 
             // Check required roles if specified
             if (options?.requiredRoles && !options.requiredRoles.includes(session.role)) {
-                console.warn(
+                logger.warn(
                     `[SECURITY] User "${session.userId}" attempted to access endpoint requiring roles [${options.requiredRoles.join(', ')}]`,
                 );
                 return NextResponse.json(
@@ -84,7 +86,7 @@ export function secureHandler<T extends NextRequest>(
             // Handler MUST use session.companyId to scope all queries
             return await handler(req, session);
         } catch (error) {
-            console.error('[SECURITY] Secure handler error:', error);
+            logger.error('[SECURITY] Secure handler error:', error);
             return NextResponse.json(
                 { error: 'Internal server error' },
                 { status: 500 },
