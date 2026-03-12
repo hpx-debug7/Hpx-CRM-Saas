@@ -34,12 +34,15 @@
     "test": "cross-env NODE_ENV=test JWT_SECRET=test-secret prisma migrate reset --force && vitest run",
     "db:push": "npx prisma db push",
     "db:seed": "npx tsx prisma/seed.ts",
-    "db:studio": "npx prisma studio"
+    "db:studio": "npx prisma studio",
+    "db:backup": "bash ./scripts/backup-db.sh",
+    "db:restore": "bash ./scripts/restore-db.sh"
   },
   "dependencies": {
     "@prisma/adapter-better-sqlite3": "^7.2.0",
     "@prisma/adapter-pg": "^7.4.2",
     "@prisma/client": "^7.2.0",
+    "@sentry/nextjs": "^10.43.0",
     "@upstash/redis": "^1.36.3",
     "bcryptjs": "^3.0.3",
     "dompurify": "^3.2.7",

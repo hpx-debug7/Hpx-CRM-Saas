@@ -131,3 +131,8 @@ tsconfig.tsbuildinfo
 /app/generated/prisma
 nul
 tmpclaude-*
+# Sentry Config File
+.env.sentry-build-plugin
+
+# Database Backups
+/backups

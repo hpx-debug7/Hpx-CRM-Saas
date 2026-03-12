@@ -532,8 +532,22 @@ Components & Pages (import types from shared.ts + hooks from contexts)
 - Only errors (console.error) are logged in production
 - Optimized bundle size and runtime performance
 
+---
 
-CI enforcement test
+## 💾 **DATABASE MAINTENANCE**
+
+### **Run Database Backup**
+```bash
+npm run db:backup
+```
+Creates a timestamped backup in the `backups/` directory.
+
+### **Restore Database**
+```bash
+npm run db:restore backups/<backup-file>.dump
+```
+Restores the database from a specific `.dump` file.
+
 ---
 
 *© 2024 Enterprise Lead Management System. All rights reserved.*

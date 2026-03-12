@@ -1,66 +1,59 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/server/db';
-import { Redis } from '@upstash/redis';
-import { getEnv } from '@/lib/server/env';
 
 /**
- * PRODUCTION HEALTH MONITORING ENDPOINT
- * 
- * Verifies core infrastructure connectivity:
- * 1. PostgreSQL (Prisma) - Required for operation (503 if down)
- * 2. Upstash Redis - Optional/Partial degradation (200 if down)
+ * Production-safe health monitoring endpoint.
+ * Verifies application and database operational status.
  */
 export async function GET() {
-    const env = getEnv();
-    const timestamp = new Date().toISOString();
+  const startTime = Date.now();
+  const timestamp = new Date().toISOString();
+  const service = "HPX Eigen SaaS CRM";
 
-    let databaseStatus: 'connected' | 'disconnected' = 'disconnected';
-    let redisStatus: 'connected' | 'disconnected' | 'unknown' = 'unknown';
-    let isHealthy = true;
+  try {
+    // Verify database connectivity using a lightweight query
+    await prisma.$queryRaw`SELECT 1`;
 
-    // 1. Database Check (Critical)
-    try {
-        await prisma.$queryRaw`SELECT 1`;
-        databaseStatus = 'connected';
-    } catch (error) {
-        databaseStatus = 'disconnected';
-        isHealthy = false;
-        // Internal logging could go here, but do not expose to response
-    }
+    const responseTime = `${Date.now() - startTime}ms`;
 
-    // 2. Redis Check (Optional/Non-critical)
-    if (env.UPSTASH_REDIS_REST_URL && env.UPSTASH_REDIS_REST_TOKEN) {
-        try {
-            const redis = new Redis({
-                url: env.UPSTASH_REDIS_REST_URL,
-                token: env.UPSTASH_REDIS_REST_TOKEN,
-            });
-            await redis.ping();
-            redisStatus = 'connected';
-        } catch (error) {
-            redisStatus = 'disconnected';
-            // Redis failure does not trigger 503 per requirements
-        }
-    }
-
-    const report = {
-        status: isHealthy ? 'ok' : 'error',
-        database: databaseStatus,
-        redis: redisStatus,
+    return NextResponse.json(
+      {
+        status: "ok",
+        service,
+        database: "connected",
+        responseTime,
         timestamp,
-    };
-
-    return NextResponse.json(report, {
-        status: isHealthy ? 200 : 503,
+      },
+      {
+        status: 200,
         headers: {
-            'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
-            'Pragma': 'no-cache',
-            'Expires': '0',
-            'Surrogate-Control': 'no-store',
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
         },
-    });
+      }
+    );
+  } catch (error) {
+    console.error('Health check failed:', error);
+    
+    return NextResponse.json(
+      {
+        status: "error",
+        service,
+        database: "disconnected",
+        message: "Database connection failed",
+        timestamp,
+      },
+      {
+        status: 500,
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        },
+      }
+    );
+  }
 }
 
-// Force dynamic behavior to ensure we aren't returning a cached static version
+/**
+ * Ensure the endpoint is runtime-evaluated and not statically optimized or cached.
+ */
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
