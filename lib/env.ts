@@ -63,7 +63,23 @@ export function getEnv(): Env {
         return cachedEnv;
     }
 
-    const result = envSchema.safeParse(process.env);
+    const isTest = process.env.NODE_ENV === 'test';
+
+    // Provide safe defaults exclusively for test environment to bypass CI failures
+    // while maintaining strict validation for development and production.
+    const envData = isTest
+        ? {
+              DATABASE_URL: 'postgresql://test:test@localhost:5432/testdb',
+              JWT_SECRET: 'test-secret-key-32-characters-long-minimum',
+              NEXTAUTH_SECRET: 'test-secret',
+              NEXTAUTH_URL: 'http://localhost:3000',
+              REDIS_URL: 'redis://localhost:6379',
+              EMAIL_ENCRYPTION_KEY: 'test-encryption-key-32-characters-long',
+              ...process.env,
+          }
+        : process.env;
+
+    const result = envSchema.safeParse(envData);
 
     if (!result.success) {
         console.error('\x1b[31m%s\x1b[0m', '❌ Invalid environment configuration');
