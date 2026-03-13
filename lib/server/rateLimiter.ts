@@ -1,6 +1,6 @@
 import { logger } from '@/lib/server/logger';
 import { Redis } from '@upstash/redis';
-import { getEnv } from './env';
+import { getEnv } from '@/lib/env';
 const env = getEnv();
 
 export interface RateLimiter {

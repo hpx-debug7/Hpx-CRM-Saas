@@ -1,4 +1,6 @@
 import 'server-only';
+import { getEnv } from '@/lib/env';
+const env = getEnv();
 
 type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
@@ -41,7 +43,7 @@ function redact(obj: unknown): unknown {
 }
 
 function emit(level: LogLevel, args: unknown[]): void {
-    const minLevel: LogLevel = process.env.NODE_ENV === 'production' ? 'info' : 'debug';
+    const minLevel: LogLevel = env.NODE_ENV === 'production' ? 'info' : 'debug';
 
     if (LEVEL_PRIORITY[level] < LEVEL_PRIORITY[minLevel]) return;
 

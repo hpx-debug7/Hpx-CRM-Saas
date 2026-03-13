@@ -5,7 +5,7 @@ import { upsertAccount } from '@/app/lib/email/emailService';
 import { runInitialSync } from '@/app/lib/email/syncEngine';
 import { addServerAuditLog } from '@/app/actions/audit';
 import { requireAuth } from '@/app/actions/auth';
-import { getEnv } from '@/lib/server/env';
+import { getEnv } from '@/lib/env';
 const env = getEnv();
 
 export const runtime = 'nodejs';
@@ -63,7 +63,7 @@ export async function GET(req: Request) {
 
     await runInitialSync(account);
 
-    return NextResponse.redirect(`${process.env.BASE_URL || ''}/email`);
+    return NextResponse.redirect(`${env.BASE_URL || ''}/email`);
   } catch (error) {
     logger.error('[GMAIL OAUTH CALLBACK] error', error instanceof Error ? error.stack : error);
     return NextResponse.json(

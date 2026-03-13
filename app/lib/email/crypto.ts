@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { getEnv } from '@/lib/server/env';
+import { getEnv } from '@/lib/env';
 const env = getEnv();
 
 const ENCRYPTION_KEY = env.EMAIL_ENCRYPTION_KEY;

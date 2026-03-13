@@ -1,7 +1,9 @@
 import { logger } from '@/lib/server/logger';
+import { getEnv } from '@/lib/env';
+const env = getEnv();
 
-const WS_PUBLISH_URL = process.env.WS_PUBLISH_URL || '';
-const WS_PUBLISH_SECRET = process.env.WS_PUBLISH_SECRET;
+const WS_PUBLISH_URL = env.WS_PUBLISH_URL || '';
+const WS_PUBLISH_SECRET = env.WS_PUBLISH_SECRET;
 
 export async function publishEmailEvent(
   userId: string,

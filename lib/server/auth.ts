@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import { SignJWT, jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
 import { prisma } from './db';
-import { getEnv } from './env';
+import { getEnv } from '@/lib/env';
 const env = getEnv();
 
 // ============================================================================
