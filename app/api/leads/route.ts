@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { prisma, Prisma } from '@/lib/server/db';
 import type { Lead } from '@/app/types/shared';
 import { fromDbLead, toDbLead } from '@/app/lib/leadMapper';
-import { getEnv } from '@/lib/server/env';
+import { getEnv } from '@/lib/env';
 const env = getEnv();
 
 const BATCH_SIZE = 200;

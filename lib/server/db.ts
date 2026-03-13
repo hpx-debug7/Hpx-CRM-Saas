@@ -2,7 +2,7 @@ import { PrismaClient, Prisma } from '@prisma/client';
 export { Prisma };
 import { Pool } from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
-import { getEnv } from './env';
+import { getEnv } from '@/lib/env';
 const env = getEnv();
 
 // Singleton pattern for PrismaClient to avoid multiple instances in development

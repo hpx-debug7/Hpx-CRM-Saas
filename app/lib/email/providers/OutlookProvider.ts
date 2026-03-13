@@ -2,7 +2,7 @@ import type { EmailProvider } from './EmailProvider';
 import type { EmailThreadSummary, EmailMessageMeta, SyncResult, ThreadListParams, TokenSet, SendEmailPayload, SendEmailResult } from '../types';
 import type { EmailAccount } from '.prisma/client';
 import { decryptString } from '../crypto';
-import { getEnv } from '@/lib/server/env';
+import { getEnv } from '@/lib/env';
 const env = getEnv();
 
 const OUTLOOK_AUTH_BASE = 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize';
@@ -10,15 +10,15 @@ const OUTLOOK_TOKEN_URL = 'https://login.microsoftonline.com/common/oauth2/v2.0/
 const GRAPH_BASE = 'https://graph.microsoft.com/v1.0';
 
 function getClientId(): string {
-  return process.env.MICROSOFT_CLIENT_ID || '';
+  return env.MICROSOFT_CLIENT_ID || '';
 }
 
 function getClientSecret(): string {
-  return process.env.MICROSOFT_CLIENT_SECRET || '';
+  return env.MICROSOFT_CLIENT_SECRET || '';
 }
 
 function getRedirectUri(): string {
-  return `${process.env.BASE_URL || ''}/api/oauth/microsoft/callback`;
+  return `${env.BASE_URL || ''}/api/oauth/microsoft/callback`;
 }
 
 function getAccessToken(account: EmailAccount): string {

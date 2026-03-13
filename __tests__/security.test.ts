@@ -8,7 +8,7 @@
 import { describe, test, expect, beforeAll, afterEach } from 'vitest';
 import { SignJWT } from 'jose';
 import { prisma } from '@/lib/server/db';
-import { getEnv } from '@/lib/server/env';
+import { getEnv } from '@/lib/env';
 const env = getEnv();
 import { loginAction } from '@/app/actions/auth';
 import { getValidatedSession, generateSessionToken, verifySessionToken } from '@/lib/server/auth';

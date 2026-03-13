@@ -1,6 +1,8 @@
 import { logger } from '@/lib/server/logger';
 import { prisma } from '@/lib/server/db';
 import { SyncQueueService } from './syncQueue';
+import { getEnv } from '@/lib/env';
+const env = getEnv();
 
 export interface SyncCheckpoint {
   entityType: string;
@@ -27,9 +29,9 @@ export interface SyncStats {
 }
 
 const MAX_BATCH_SIZE = 50;
-const SERVER_BASE_URL = process.env.SYNC_SERVER_URL || '';
-const DEVICE_ID = process.env.DEVICE_ID || 'default';
-const COMPANY_ID = process.env.COMPANY_ID || 'SYSTEM';
+const SERVER_BASE_URL = env.SYNC_SERVER_URL || '';
+const DEVICE_ID = env.DEVICE_ID || 'default';
+const COMPANY_ID = env.COMPANY_ID || 'SYSTEM';
 const API_VERSION = 'v2';
 
 /**
@@ -169,7 +171,7 @@ export class SyncEngine {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
-                Authorization: `Bearer ${process.env.SYNC_API_KEY || ''}`,
+                Authorization: `Bearer ${env.SYNC_API_KEY || ''}`,
               },
               body: JSON.stringify({
                 type: entityType,
@@ -336,7 +338,7 @@ export class SyncEngine {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${process.env.SYNC_API_KEY || ''}`,
+            Authorization: `Bearer ${env.SYNC_API_KEY || ''}`,
           },
           body: JSON.stringify({
             batch,
@@ -433,7 +435,7 @@ export class SyncEngine {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${process.env.SYNC_API_KEY || ''}`,
+            Authorization: `Bearer ${env.SYNC_API_KEY || ''}`,
           },
           body: JSON.stringify({ conflicts: resolutions }),
         }

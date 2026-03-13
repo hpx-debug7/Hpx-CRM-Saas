@@ -2,7 +2,7 @@ import type { EmailProvider } from './EmailProvider';
 import type { EmailThreadSummary, EmailMessageMeta, SyncResult, ThreadListParams, TokenSet, SendEmailPayload, SendEmailResult } from '../types';
 import type { EmailAccount } from '.prisma/client';
 import { decryptString } from '../crypto';
-import { getEnv } from '@/lib/server/env';
+import { getEnv } from '@/lib/env';
 const env = getEnv();
 
 const GMAIL_AUTH_BASE = 'https://accounts.google.com/o/oauth2/v2/auth';
@@ -10,24 +10,24 @@ const GMAIL_TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const GMAIL_API_BASE = 'https://gmail.googleapis.com/gmail/v1/users/me';
 
 function getClientId(): string {
-  if (!process.env.GOOGLE_CLIENT_ID) {
+  if (!env.GOOGLE_CLIENT_ID) {
     throw new Error('GOOGLE_CLIENT_ID is missing. Set it in the server environment.');
   }
-  return process.env.GOOGLE_CLIENT_ID;
+  return env.GOOGLE_CLIENT_ID;
 }
 
 function getClientSecret(): string {
-  if (!process.env.GOOGLE_CLIENT_SECRET) {
+  if (!env.GOOGLE_CLIENT_SECRET) {
     throw new Error('GOOGLE_CLIENT_SECRET is missing. Set it in the server environment.');
   }
-  return process.env.GOOGLE_CLIENT_SECRET;
+  return env.GOOGLE_CLIENT_SECRET;
 }
 
 function getRedirectUri(): string {
-  if (process.env.GOOGLE_REDIRECT_URI) {
-    return process.env.GOOGLE_REDIRECT_URI;
+  if (env.GOOGLE_REDIRECT_URI) {
+    return env.GOOGLE_REDIRECT_URI;
   }
-  return `${process.env.BASE_URL || ''}/api/oauth/google/callback`;
+  return `${env.BASE_URL || ''}/api/oauth/google/callback`;
 }
 
 function getAccessToken(account: EmailAccount): string {

@@ -4,7 +4,7 @@ import { OutlookProvider } from '@/app/lib/email/providers/OutlookProvider';
 import { upsertAccount } from '@/app/lib/email/emailService';
 import { runInitialSync } from '@/app/lib/email/syncEngine';
 import { addServerAuditLog } from '@/app/actions/audit';
-import { getEnv } from '@/lib/server/env';
+import { getEnv } from '@/lib/env';
 const env = getEnv();
 
 export const runtime = 'nodejs';
@@ -59,7 +59,7 @@ export async function GET(req: Request) {
 
     await runInitialSync(account);
 
-    return NextResponse.redirect(`${process.env.BASE_URL || ''}/email`);
+    return NextResponse.redirect(`${env.BASE_URL || ''}/email`);
   } catch (error) {
     return NextResponse.json(
       { success: false, error: error instanceof Error ? error.message : 'OAuth callback failed' },
