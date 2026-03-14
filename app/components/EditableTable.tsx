@@ -3,6 +3,7 @@
 
 import { logger } from '@/lib/client/logger';
 import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { apiFetch } from '@/lib/client/apiClient';
 import type { Lead, LeadFilters } from '../types/shared';
 import LeadTable from './LeadTable';
 import PasswordModal from './PasswordModal';
@@ -99,15 +100,15 @@ const EditableTable: React.FC<EditableTableProps> = ({
     let isMounted = true;
     const loadPreferences = async () => {
       try {
-        const response = await fetch('/api/user/preferences', { method: 'GET', credentials: 'same-origin' });
-        if (!response.ok) return;
-        const data = await response.json();
-        if (!isMounted) return;
-        if (typeof data?.preferences?.stickyLeadTableHeader === 'boolean') {
-          setIsStickyEnabled(data.preferences.stickyLeadTableHeader);
+        const prefs = await apiFetch<any>('/api/user/preferences');
+
+        if (!prefs) return;
+
+        if (typeof prefs?.preferences?.stickyLeadTableHeader === 'boolean') {
+          setIsStickyEnabled(prefs.preferences.stickyLeadTableHeader);
         }
-      } catch (error) {
-        logger.error('Failed to load user preferences:', error);
+      } catch {
+        // intentionally swallow errors
       }
     };
 
@@ -123,21 +124,17 @@ const EditableTable: React.FC<EditableTableProps> = ({
     setIsSavingStickyPreference(true);
 
     try {
-      const response = await fetch('/api/user/preferences', {
+      const data = await apiFetch<any>('/api/user/preferences', {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'same-origin',
         body: JSON.stringify({ stickyLeadTableHeader: checked }),
       });
 
-      if (!response.ok) {
-        const payload = await response.json().catch(() => ({}));
+      if (!data?.success) {
         setIsStickyEnabled(previousValue);
-        logger.warn(payload?.error || `Failed to save sticky header preference (${response.status})`);
+        logger.warn(data?.error || `Failed to save sticky header preference`);
         return;
       }
 
-      const data = await response.json();
       if (typeof data?.preferences?.stickyLeadTableHeader === 'boolean') {
         setIsStickyEnabled(data.preferences.stickyLeadTableHeader);
       }

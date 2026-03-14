@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import ComposeEmailModal from './ComposeEmailModal';
+import { apiFetch } from '@/lib/client/apiClient';
 
 interface EmailThread {
   id: string;
@@ -19,15 +20,26 @@ export default function EmailHeaderInbox() {
   const [showCompose, setShowCompose] = useState(false);
 
   const refresh = async () => {
-    const [unreadRes, recentRes] = await Promise.all([
-      fetch('/api/email/unread-count'),
-      fetch('/api/email/recent?limit=5'),
-    ]);
+    try {
+      const origin =
+        typeof window !== "undefined" ? window.location.origin : "";
 
-    const unreadData = await unreadRes.json();
-    const recentData = await recentRes.json();
-    if (unreadData.success) setUnreadCount(unreadData.data.unreadCount);
-    if (recentData.success) setThreads(recentData.data || []);
+      const unreadRes =
+        (await apiFetch<any>(`${origin}/api/email/unread-count`)) ??
+        { data: { unreadCount: 0 } };
+
+      const recentRes =
+        (await apiFetch<any>(`${origin}/api/email/recent?limit=5`)) ??
+        { data: [] };
+
+      setUnreadCount(unreadRes?.data?.unreadCount ?? 0);
+      setThreads(recentRes?.data ?? []);
+    } catch (err) {
+      console.error("Email refresh failed", err);
+
+      setUnreadCount(0);
+      setThreads([]);
+    }
   };
 
   useEffect(() => {

@@ -49,7 +49,6 @@ export default function AddLeadPage() {
   const [isHydrated, setIsHydrated] = useState(false);
   const [customFields, setCustomFields] = useState<Record<string, any>>({});
   const [hasManualEdit, setHasManualEdit] = useState(false); // Prevents auto-detection from overriding user input
-  const [isPreviewMode, setIsPreviewMode] = useState(false); // Toggle for submission preview panel
   const sanitizePhone = (num?: string) => (num ? num.replace(/[^0-9]/g, '').slice(0, 10) : '');
   const buildMobileNumbersFromLead = (leadData: any): MobileNumber[] => {
     const mobileNumbers: MobileNumber[] = [
@@ -71,7 +70,7 @@ export default function AddLeadPage() {
       });
     }
 
-    const fallbackCandidates = [
+    const fallbackCandidates = Array.from(new Set([
       sanitizePhone(leadData?.mobileNumber),
       sanitizePhone(leadData?.phoneNumber),
       sanitizePhone(leadData?.phone_no),
@@ -83,16 +82,20 @@ export default function AddLeadPage() {
       sanitizePhone(leadData?.Mobile),
       sanitizePhone(leadData?.contactNumber),
       sanitizePhone(leadData?.contactNo)
-    ].filter(Boolean);
+    ].filter(Boolean)));
 
     fallbackCandidates.forEach((num) => {
-      const nextSlot = mobileNumbers.findIndex(m => !m.number);
-      if (nextSlot !== -1) {
-        mobileNumbers[nextSlot] = {
-          ...mobileNumbers[nextSlot],
-          number: num,
-          isMain: nextSlot === 0 ? true : mobileNumbers[nextSlot].isMain
-        };
+      // Check if this number is already in the mobileNumbers array
+      const exists = mobileNumbers.some(m => m.number === num);
+      if (!exists) {
+        const nextSlot = mobileNumbers.findIndex(m => !m.number);
+        if (nextSlot !== -1) {
+          mobileNumbers[nextSlot] = {
+            ...mobileNumbers[nextSlot],
+            number: num,
+            isMain: nextSlot === 0 ? true : mobileNumbers[nextSlot].isMain
+          };
+        }
       }
     });
 
@@ -539,10 +542,9 @@ export default function AddLeadPage() {
         if (updated.followUpDate) delete updated.followUpDate;
         if (updated.notes) delete updated.notes;
       } else {
-        // All other statuses require follow-up date
-        if (!formData.followUpDate || !formData.followUpDate.trim()) {
-          updated.followUpDate = 'Next Follow-up Date is required';
-        } else {
+        // All other statuses require follow-up date, but we only clear the error 
+        // reactively instead of eagerly setting it before submit.
+        if (formData.followUpDate && formData.followUpDate.trim()) {
           delete updated.followUpDate;
         }
       }
@@ -1250,7 +1252,7 @@ export default function AddLeadPage() {
                             value={mobile.name}
                             onChange={(e) => handleMobileNameChange(index, e.target.value)}
                             className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-purple-500 focus:border-purple-500 transition-colors duration-200 text-black placeholder:text-black"
-                            placeholder={`Contact ${index + 1}`}
+                            placeholder={`Name ${index + 1}`}
                             disabled={isSubmitting}
                           />
                         </div>
@@ -1656,65 +1658,8 @@ export default function AddLeadPage() {
             );
           })()}
 
-          {/* Preview Mode Panel */}
-          {/* Preview Mode Panel - Shows exact snapshot that will be saved */}
-          {isPreviewMode && (() => {
-            // Build the exact same snapshot that will be saved as submitted_payload
-            const previewPayload = {
-              ...formData,
-              unitType: formData.unitType === 'Other' ? customUnitType : formData.unitType,
-              ...customFields,
-              submittedAt: new Date().toISOString()
-            };
-            return (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                <h4 className="text-sm font-semibold text-blue-800 mb-2">
-                  📋 Preview: Exact Snapshot That Will Be Saved
-                </h4>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-xs">
-                  <div><strong>Status:</strong> {previewPayload.status}</div>
-                  <div><strong>Unit Type:</strong> {previewPayload.unitType}</div>
-                  <div><strong>Follow-up Date:</strong> {previewPayload.followUpDate || 'Not set'}</div>
-                  <div><strong>Company Location:</strong> {previewPayload.companyLocation || 'Not set'}</div>
-                  {previewPayload.mobileNumbers.filter((m: any) => m.number).map((m: any, i: number) => (
-                    <div key={i}>
-                      <strong>Mobile {i + 1}:</strong> {m.number} {m.isMain ? '(Main)' : ''}
-                      {m.name && ` - ${m.name}`}
-                    </div>
-                  ))}
-                  {/* Display custom fields from previewPayload */}
-                  {Object.entries(customFields).filter(([_, v]) => v).map(([k, v]) => (
-                    <div key={k}><strong>{k}:</strong> {String(v)}</div>
-                  ))}
-                </div>
-                <div className="mt-3 p-2 bg-white rounded border border-blue-100">
-                  <details className="text-xs">
-                    <summary className="cursor-pointer text-blue-700 font-medium">View Full Payload (JSON)</summary>
-                    <pre className="mt-2 p-2 bg-gray-100 rounded overflow-x-auto text-[10px] max-h-40">
-                      {JSON.stringify(previewPayload, null, 2)}
-                    </pre>
-                  </details>
-                </div>
-                <p className="text-xs text-blue-600 mt-2 italic">
-                  ⚠️ This snapshot will be saved as submitted_payload and <strong>cannot be modified</strong> after submission.
-                </p>
-              </div>
-            );
-          })()}
-
           {/* Form Actions */}
           <div className="flex flex-col sm:flex-row gap-2 pt-2 border-t border-gray-200">
-            {/* Preview Toggle Button */}
-            <button
-              type="button"
-              onClick={() => setIsPreviewMode(!isPreviewMode)}
-              className={`flex-1 sm:flex-none sm:px-4 py-2 rounded font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 text-sm ${isPreviewMode
-                ? 'bg-blue-600 text-white hover:bg-blue-700'
-                : 'bg-blue-100 text-blue-700 hover:bg-blue-200 border border-blue-300'
-                }`}
-            >
-              {isPreviewMode ? '📋 Hide Preview' : '👁️ Preview Submission'}
-            </button>
 
             <button
               type="submit"
