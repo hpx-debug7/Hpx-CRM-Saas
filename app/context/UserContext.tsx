@@ -157,8 +157,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
                 isActive: u.isActive,
                 rolePresetId: u.rolePresetId,
                 customPermissions: u.customPermissions,
-                createdAt: u.createdAt.toISOString(),
-                lastLoginAt: u.lastLoginAt?.toISOString(),
+                createdAt: u.createdAt as unknown as string,
+                lastLoginAt: u.lastLoginAt as unknown as string | undefined,
             })));
         } catch (error) {
             // User may not be admin, that's fine
@@ -419,8 +419,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
                 description: p.description,
                 permissions: p.permissions,
                 isSystem: p.isSystem,
-                createdAt: p.createdAt.toISOString(),
-                updatedAt: p.updatedAt.toISOString(),
+                createdAt: p.createdAt as unknown as string,
+                updatedAt: p.updatedAt as unknown as string,
                 createdById: p.createdById,
                 userCount: p.userCount,
             }));

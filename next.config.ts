@@ -4,7 +4,7 @@ const nextConfig: NextConfig = {
   // Standalone output for Electron with embedded Node.js server
   // This bundles all dependencies into a standalone folder
   output: 'standalone',
-  trailingSlash: true,
+  trailingSlash: false,
 
   // External packages that need native bindings (not bundled by webpack)
   serverExternalPackages: ['better-sqlite3', '@prisma/adapter-better-sqlite3'],
