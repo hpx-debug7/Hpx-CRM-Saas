@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/server/db';
 import { requireAuth } from '@/app/actions/auth';
 import { withApiLogging } from "@/lib/apiLogger";
+import { logger } from "@/lib/logger";
 
 export const runtime = 'nodejs';
 
@@ -9,6 +10,15 @@ export async function GET(req: Request) {
     return withApiLogging(req, async (requestId) => {
       try {
         const session = await requireAuth();
+
+        if (!session || !session.userId) {
+          logger.warn("Unauthorized access to recent emails", { route: "/api/email/recent" });
+          return NextResponse.json(
+            { success: false, error: "Unauthorized" },
+            { status: 401 }
+          );
+        }
+
         const { searchParams } = new URL(req.url);
         const limit = Number(searchParams.get('limit') || '5');
 
@@ -21,8 +31,12 @@ export async function GET(req: Request) {
 
         return NextResponse.json({ success: true, data: threads });
       } catch (error) {
+        logger.error("Failed to load recent threads", {
+          error: error instanceof Error ? error.message : String(error),
+          route: "/api/email/recent"
+        });
         return NextResponse.json(
-          { success: false, error: error instanceof Error ? error.message : 'Failed to load recent threads' },
+          { success: false, error: 'Failed to load recent threads' },
           { status: 500 }
         );
       }

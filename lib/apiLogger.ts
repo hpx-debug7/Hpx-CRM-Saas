@@ -1,5 +1,6 @@
 import { logger } from './logger';
 import { handleError } from './apiErrorHandler';
+import { checkRateLimit } from './rateLimiter';
 
 function classifyPerformance(duration: number): 'fast' | 'normal' | 'slow' {
   if (duration > 1000) return 'slow';
@@ -24,6 +25,12 @@ export async function withApiLogging(
     if (req.url.startsWith('/')) {
       path = req.url.split('?')[0];
     }
+  }
+
+  const ip = req.headers.get('x-forwarded-for') || 'unknown';
+  const rateLimitResponse = await checkRateLimit(ip, path);
+  if (rateLimitResponse) {
+    return rateLimitResponse;
   }
 
   const startHrTime = process.hrtime.bigint();

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireAuth } from '@/app/actions/auth';
 import { prisma } from '@/lib/server/db';
 import { withApiLogging } from "@/lib/apiLogger";
+import { logger } from "@/lib/logger";
 
 export const runtime = 'nodejs';
 
@@ -22,6 +23,14 @@ export async function GET(req: Request) {
     return withApiLogging(req, async (requestId) => {
       try {
         const session = await requireAuth();
+
+        if (!session || !session.userId) {
+          logger.warn("Unauthorized access to user preferences", { route: "/api/user/preferences" });
+          return NextResponse.json(
+            { success: false, error: "Unauthorized" },
+            { status: 401 }
+          );
+        }
 
         // Primary path: typed Prisma client
         try {
@@ -75,6 +84,12 @@ export async function GET(req: Request) {
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to load preferences';
         const status = message.toLowerCase().includes('unauthorized') ? 401 : 500;
+        
+        logger.error("Failed to load user preferences", {
+          error: message,
+          route: "/api/user/preferences"
+        });
+
         return NextResponse.json(
           { success: false, error: message },
           { status }
@@ -88,6 +103,15 @@ export async function PATCH(req: Request) {
     return withApiLogging(req, async (requestId) => {
       try {
         const session = await requireAuth();
+
+        if (!session || !session.userId) {
+          logger.warn("Unauthorized access to user preferences update", { route: "/api/user/preferences" });
+          return NextResponse.json(
+            { success: false, error: "Unauthorized" },
+            { status: 401 }
+          );
+        }
+
         const body = await req.json();
         const value = body?.stickyLeadTableHeader;
 
@@ -150,6 +174,12 @@ export async function PATCH(req: Request) {
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to save preferences';
         const status = message.toLowerCase().includes('unauthorized') ? 401 : 500;
+        
+        logger.error("Failed to save user preferences", {
+          error: message,
+          route: "/api/user/preferences"
+        });
+
         return NextResponse.json(
           { success: false, error: message },
           { status }
