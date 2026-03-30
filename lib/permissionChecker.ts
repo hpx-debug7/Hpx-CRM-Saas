@@ -5,6 +5,8 @@ export function hasPermission(
   role: string,
   permission: Permission
 ): boolean {
+  if (role === "OWNER") return true;
+
   const permissions = ROLE_PERMISSIONS[role];
 
   if (!permissions) return false;

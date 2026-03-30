@@ -39,6 +39,7 @@ export interface SecureHandlerOptions {
     requiredRoles?: string[];
     permission?: LegacyPermission;
     requiredPermission?: Permission;
+    allowWithoutPermission?: boolean;
     methods?: string[];
 }
 
@@ -106,6 +107,19 @@ export function secureHandler<T extends NextRequest>(
             }
 
             // 5) Check permission BEFORE handler
+            if (
+                !options?.requiredPermission &&
+                !options?.permission &&
+                !options?.requiredRoles &&
+                !options?.allowWithoutPermission
+            ) {
+                throw new ApiError(
+                    "Permission not defined for protected route",
+                    500,
+                    "MISSING_PERMISSION_CONFIG"
+                );
+            }
+
             if (options?.permission) {
                 if (!legacyHasPermission(dbRole, options.permission)) {
                     logger.warn(`[SECURITY] User "${session.userId}" missing permission "${options.permission}"`);
