@@ -7,6 +7,19 @@ datasource db {
   provider = "postgresql"
 }
 
+enum CompanyRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  REVOKED
+}
+
 model Company {
   id                 String              @id @default(cuid())
   name               String              @unique
@@ -34,6 +47,8 @@ model Company {
   syncCheckpoints    SyncCheckpoint[]
   syncQueue          SyncQueue[]
   users              User[]
+  memberships        CompanyMembership[]
+  invitations        Invitation[]
 
   @@map("companies")
 }
@@ -66,11 +81,49 @@ model User {
   createdLeads          Lead[]              @relation("CreatedBy")
   sessions              Session[]
   company               Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  memberships           CompanyMembership[]
+  sentInvitations       Invitation[]        @relation("UserInvitations")
 
   @@unique([companyId, username])
   @@unique([companyId, email])
   @@index([companyId])
   @@map("users")
+}
+
+model Invitation {
+  id          String           @id @default(cuid())
+  email       String
+  token       String           @unique
+  companyId   String
+  role        CompanyRole
+  invitedById String
+  status      InvitationStatus @default(PENDING)
+  expiresAt   DateTime
+  acceptedAt  DateTime?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  company     Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  invitedBy   User             @relation("UserInvitations", fields: [invitedById], references: [id])
+
+  @@index([companyId])
+  @@index([email])
+  @@index([token])
+  @@map("invitations")
+}
+
+model CompanyMembership {
+  id        String      @id @default(cuid())
+  userId    String
+  companyId String
+  role      CompanyRole
+  createdAt DateTime    @default(now())
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company   Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, companyId])
+  @@index([companyId])
+  @@index([userId])
+  @@map("company_memberships")
 }
 
 model Session {
