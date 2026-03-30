@@ -120,7 +120,7 @@ export function secureHandler<T extends NextRequest>(
                 );
 
                 if (!allowed) {
-                    throw new ApiError("Forbidden", 403);
+                    throw new ApiError("Forbidden", 403, "FORBIDDEN");
                 }
             }
 
