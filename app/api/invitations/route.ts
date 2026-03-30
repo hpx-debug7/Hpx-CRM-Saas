@@ -6,7 +6,7 @@ import { secureHandler } from '@/lib/server/secureHandler';
 import { withApiLogging } from '@/lib/apiLogger';
 import { safeAuditLog } from '@/src/lib/auditLogger';
 import { ValidationError, ForbiddenError } from '@/lib/errors';
-import { PERMISSIONS } from '@/src/lib/auth/permissions';
+import { PERMISSIONS } from '@/lib/permissions';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -112,7 +112,7 @@ const inviteHandler = secureHandler(
             { status: 201 },
         );
     },
-    { permission: PERMISSIONS.USER_INVITE }
+    { requiredPermission: PERMISSIONS.INVITE_USER }
 );
 
 

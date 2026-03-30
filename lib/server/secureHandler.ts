@@ -5,9 +5,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getValidatedSession } from './auth';
 import { prisma, scopedPrisma } from '@/lib/server/db';
 import { ApiError } from '@/lib/errors';
-import { Permission } from '@/src/lib/auth/permissions';
-import { hasPermission } from '@/src/lib/auth/permissionChecker';
+import { Permission as LegacyPermission } from '@/src/lib/auth/permissions';
+import { hasPermission as legacyHasPermission } from '@/src/lib/auth/permissionChecker';
 import { Role } from '@/src/lib/auth/rolePermissions';
+import { hasPermission } from '@/lib/permissionChecker';
+import { Permission } from '@/lib/permissions';
 
 /**
  * SECURE HANDLER WRAPPER
@@ -35,7 +37,8 @@ export interface SecureHandlerContext {
 
 export interface SecureHandlerOptions {
     requiredRoles?: string[];
-    permission?: Permission;
+    permission?: LegacyPermission;
+    requiredPermission?: Permission;
     methods?: string[];
 }
 
@@ -104,9 +107,20 @@ export function secureHandler<T extends NextRequest>(
 
             // 5) Check permission BEFORE handler
             if (options?.permission) {
-                if (!hasPermission(dbRole, options.permission)) {
+                if (!legacyHasPermission(dbRole, options.permission)) {
                     logger.warn(`[SECURITY] User "${session.userId}" missing permission "${options.permission}"`);
                     throw new ApiError("Forbidden", 403, "FORBIDDEN");
+                }
+            }
+
+            if (options?.requiredPermission) {
+                const allowed = hasPermission(
+                    membership.role,
+                    options.requiredPermission
+                );
+
+                if (!allowed) {
+                    throw new ApiError("Forbidden", 403);
                 }
             }
 
