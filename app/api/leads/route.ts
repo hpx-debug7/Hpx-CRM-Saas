@@ -1,111 +1,125 @@
-import { logger } from '@/lib/server/logger';
-import { NextResponse } from 'next/server';
-import { prisma, Prisma } from '@/lib/server/db';
-import type { Lead } from '@/app/types/shared';
-import { fromDbLead, toDbLead } from '@/app/lib/leadMapper';
-import { getEnv } from '@/lib/env';
-import { withApiLogging } from "@/lib/apiLogger";
+import { NextRequest, NextResponse } from "next/server";
+import { secureHandlerTyped } from "@/lib/server/secureHandler";
+import { scopedPrisma } from "@/lib/server/db";
+import { ApiError } from "@/lib/errors";
+import { logAuditEvent } from "@/src/lib/auditLogger";
+import { createLeadSchema, queryLeadSchema } from "@/lib/validations/lead";
+import { sanitizeCreateLeadInput } from "@/lib/server/sanitize/lead";
+import { buildLeadAuditPayload } from "@/lib/server/audit/auditPayload";
+import { Prisma } from "@prisma/client";
 
-const env = getEnv();
+export const POST = secureHandlerTyped(
+  async (req: NextRequest, { companyId, userId }) => {
+    try {
+      const body = await req.json();
 
-const BATCH_SIZE = 200;
-
-function chunk<T>(items: T[], size: number): T[][] {
-  const result: T[][] = [];
-  for (let i = 0; i < items.length; i += size) {
-    result.push(items.slice(i, i + size));
-  }
-  return result;
-}
-
-export async function GET(req: Request) {
-    return withApiLogging(req, async (requestId) => {
-      try {
-        const dbLeads = await prisma.lead.findMany({
-          orderBy: { updatedAt: 'desc' }
-        });
-        const leads = dbLeads.map((l) => fromDbLead(l));
-        return NextResponse.json({ success: true, leads });
-      } catch (error) {
-        logger.error('[GET /api/leads] Error:', error);
-        return NextResponse.json(
-          {
-            success: false,
-            error: error instanceof Error ? error.message : 'Failed to load leads',
-            stack: env.NODE_ENV === 'development' && error instanceof Error ? error.stack : undefined
-          },
-          { status: 500 }
+      const validationResult = createLeadSchema.safeParse(body);
+      if (!validationResult.success) {
+        throw new ApiError(
+          "Invalid input data",
+          400,
+          "VALIDATION_ERROR",
+          { errors: validationResult.error.errors }
         );
       }
 
-    });
-}
+      const input = validationResult.data;
+      const db = scopedPrisma(companyId);
 
-export async function POST(req: Request) {
-    return withApiLogging(req, async (requestId) => {
-      try {
-        const body = await req.json();
-        const leads: Lead[] = Array.isArray(body?.leads) ? body.leads : [];
-        const companyId: string = body?.companyId || 'default';
+      const safeData = sanitizeCreateLeadInput(input);
 
-        if (leads.length === 0) {
-          return NextResponse.json({ success: true, count: 0 });
-        }
+      const lead = await db.lead.create({
+        data: {
+          ...safeData,
+          companyId,
+          createdById: userId,
+        },
+      });
 
-        let savedCount = 0;
-        const errors: string[] = [];
-        const batches = chunk(leads, BATCH_SIZE);
+      await logAuditEvent({
+        companyId,
+        performedById: userId,
+        actionType: "LEAD_CREATED",
+        entityType: "Lead",
+        entityId: lead.id,
+        description: `Lead created: ${lead.title}`,
+        afterValue: buildLeadAuditPayload(lead),
+      });
 
-        for (const batch of batches) {
-          const operations = batch.map((lead) => {
-            const mapped = toDbLead(lead);
-            const { id, assignedToId: _a, createdById: _c, ...rest } = mapped;
-            const createData = { id, companyId, ...rest } as Prisma.LeadUncheckedCreateInput;
-            const updateData = rest as Prisma.LeadUncheckedUpdateInput;
-            return prisma.lead.upsert({
-              where: { id },
-              create: createData,
-              update: updateData
-            });
-          });
+      return NextResponse.json({ data: lead }, { status: 201 });
+    } catch (error: any) {
+      if (error instanceof ApiError) {
+        throw error;
+      }
+      throw new ApiError("Failed to create lead", 500, "CREATE_LEAD_ERROR");
+    }
+  },
+  { requiredPermission: "lead:create" as any }
+);
 
-          try {
-            await prisma.$transaction(operations);
-            savedCount += batch.length;
-          } catch (txError) {
-            for (const lead of batch) {
-              try {
-                const mapped = toDbLead(lead);
-                const { id, assignedToId: _a, createdById: _c, ...rest } = mapped;
-                const createData = { id, companyId, ...rest } as Prisma.LeadUncheckedCreateInput;
-                const updateData = rest as Prisma.LeadUncheckedUpdateInput;
-                await prisma.lead.upsert({
-                  where: { id },
-                  create: createData,
-                  update: updateData
-                });
-                savedCount++;
-              } catch (singleErr) {
-                errors.push(
-                  `Lead ${lead.id}: ${singleErr instanceof Error ? singleErr.message : 'unknown error'}`
-                );
-              }
-            }
-          }
-        }
+export const GET = secureHandlerTyped(
+  async (req: NextRequest, { companyId }) => {
+    try {
+      const { searchParams } = new URL(req.url);
+      const queryParams = Object.fromEntries(searchParams.entries());
 
-        return NextResponse.json({
-          success: true,
-          count: savedCount,
-          ...(errors.length > 0 && { partialErrors: errors })
-        });
-      } catch (error) {
-        logger.error('[POST /api/leads] Fatal error:', error);
-        return NextResponse.json(
-          { success: false, error: error instanceof Error ? error.message : 'Failed to save leads' },
-          { status: 500 }
+      const validationResult = queryLeadSchema.safeParse(queryParams);
+      if (!validationResult.success) {
+        throw new ApiError(
+          "Invalid query parameters",
+          400,
+          "VALIDATION_ERROR",
+          { errors: validationResult.error.errors }
         );
       }
 
-    });
-}
+      const { cursor, limit, status, assignedToId } = validationResult.data;
+      const db = scopedPrisma(companyId);
+
+      const where: Prisma.LeadWhereInput = { companyId, isDeleted: false };
+      if (status) {
+        where.status = status;
+      }
+      if (assignedToId) {
+        where.assignedToId = assignedToId;
+      }
+
+      const queryArgs: Prisma.LeadFindManyArgs = {
+        where,
+        orderBy: { createdAt: "desc" },
+        take: limit + 1,
+      };
+
+      if (cursor) {
+        queryArgs.cursor = { id: cursor };
+        queryArgs.skip = 1; // Skip the cursor itself
+      }
+
+      let rawLeads = await db.lead.findMany(queryArgs);
+
+      let nextCursor: string | null = null;
+      if (rawLeads.length > limit) {
+        rawLeads = rawLeads.slice(0, limit);
+        if (rawLeads.length > 0) {
+          nextCursor = rawLeads[rawLeads.length - 1].id;
+        }
+      }
+
+      return NextResponse.json({
+        data: rawLeads,
+        nextCursor,
+      });
+    } catch (error: any) {
+      if (error?.code === "P2025") {
+        throw new ApiError("Invalid cursor", 400, "INVALID_CURSOR");
+      }
+
+      if (error instanceof ApiError) {
+        throw error;
+      }
+      
+      throw new ApiError("Failed to fetch leads", 500, "FETCH_LEADS_ERROR");
+    }
+  },
+  { requiredPermission: "lead:read" as any }
+);
