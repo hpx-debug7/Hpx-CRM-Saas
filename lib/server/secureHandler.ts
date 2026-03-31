@@ -49,11 +49,11 @@ export interface SecureHandlerOptions {
 export function secureHandler<T extends NextRequest>(
     handler: (
         req: T,
-        context: SecureHandlerContext,
+        context: SecureHandlerContext & { params?: any },
     ) => Promise<NextResponse | Response>,
     options?: SecureHandlerOptions,
 ) {
-    return async (req: T): Promise<NextResponse | Response> => {
+    return async (req: T, nextContext?: { params?: any }): Promise<NextResponse | Response> => {
         try {
             // Validate HTTP method if specified
             if (options?.methods && !options.methods.includes(req.method)) {
@@ -141,7 +141,8 @@ export function secureHandler<T extends NextRequest>(
             // 6) Pass resolved role forward
             return await handler(req, {
                 ...session,
-                role: membership.role
+                role: membership.role,
+                ...(nextContext?.params ? { params: nextContext.params } : {})
             });
 
         } catch (error) {
@@ -158,7 +159,7 @@ export function secureHandler<T extends NextRequest>(
 }
 
 export function secureHandlerTyped<Req extends NextRequest = NextRequest>(
-    handler: (req: Req, context: SecureHandlerContext) => Promise<NextResponse | Response>,
+    handler: (req: Req, context: SecureHandlerContext & { params?: any }, nextContext?: any) => Promise<NextResponse | Response>,
     options?: SecureHandlerOptions,
 ) {
     return secureHandler(handler as any, options);
