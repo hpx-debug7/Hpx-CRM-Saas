@@ -173,7 +173,7 @@ async function acceptHandler(request: NextRequest) {
         );
     } catch (error: any) {
         if (error instanceof ApiError) throw error;
-        
+
         // Handle the "Invitation already accepted or invalid" error from updateMany
         if (error.message === 'Invitation already accepted or invalid') {
             return NextResponse.json(
