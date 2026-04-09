@@ -80,12 +80,9 @@ export function secureHandler<T extends NextRequest>(
 
             // 2) Fetch membership from DB using scopedPrisma (SOURCE OF TRUTH)
             const db = scopedPrisma(session.companyId);
-            const membership = await db.companyMembership.findUnique({
+            const membership = await db.companyMembership.findFirst({
                 where: {
-                    userId_companyId: {
-                        userId: session.userId,
-                        companyId: session.companyId,
-                    },
+                    userId: session.userId,
                 },
             });
 
@@ -145,9 +142,20 @@ export function secureHandler<T extends NextRequest>(
                 ...(nextContext?.params ? { params: nextContext.params } : {})
             });
 
-        } catch (error) {
-            if (error instanceof ApiError) {
-                throw error;
+        } catch (error: any) {
+            console.error('[DEBUG] secureHandler CAUGHT ERROR:', error);
+            console.error('[DEBUG] error instanceof ApiError:', error instanceof ApiError);
+            console.error('[DEBUG] error keys:', error ? Object.keys(error) : 'null');
+            console.error('[DEBUG] error.statusCode:', error?.statusCode);
+
+            if (error instanceof ApiError || (error && typeof error === 'object' && 'statusCode' in error)) {
+                return NextResponse.json(
+                    {
+                        error: error.message,
+                        code: error.code || 'API_ERROR',
+                    },
+                    { status: error.statusCode },
+                );
             }
             logger.error('[SECURITY] Secure handler error:', error);
             return NextResponse.json(

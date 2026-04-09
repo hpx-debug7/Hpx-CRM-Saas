@@ -118,6 +118,11 @@ async function main() {
         console.log(`✅ Upserted system preset: ${preset.name}`);
     }
 
+    // ========================================================================
+    // SEED PIPELINE STAGES (for every company)
+    // ========================================================================
+    await seedPipelineStages();
+
     // Log the seeding event
     await prisma.auditLog.create({
         data: {
@@ -125,13 +130,47 @@ async function main() {
             actionType: 'SYSTEM_SEED',
             entityType: 'user',
             entityId: admin.id,
-            description: 'Database seeded with initial admin user and system role presets',
+            description: 'Database seeded with initial admin user, system role presets, and pipeline stages',
             performedByName: 'System',
             hash: 'seed-initial',
         },
     });
 
     console.log('✅ Database seeded successfully!');
+}
+
+const DEFAULT_PIPELINE_STAGES = [
+    { name: 'New', order: 1 },
+    { name: 'Contacted', order: 2 },
+    { name: 'Qualified', order: 3 },
+    { name: 'Won', order: 4 },
+    { name: 'Lost', order: 5 },
+];
+
+async function seedPipelineStages() {
+    console.log('🔧 Seeding pipeline stages...');
+
+    const companies = await prisma.company.findMany({ select: { id: true, name: true } });
+
+    for (const company of companies) {
+        for (const stage of DEFAULT_PIPELINE_STAGES) {
+            await prisma.pipelineStage.upsert({
+                where: {
+                    companyId_order: {
+                        companyId: company.id,
+                        order: stage.order,
+                    },
+                },
+                update: {},
+                create: {
+                    name: stage.name,
+                    order: stage.order,
+                    companyId: company.id,
+                },
+            });
+        }
+        console.log(`  ✅ Pipeline stages seeded for company: ${company.name} (${company.id})`);
+    }
 }
 
 main()

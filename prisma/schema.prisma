@@ -41,6 +41,7 @@ model Company {
   emailThreads       EmailThread[]
   emailWebhookStates EmailWebhookState[]
   leads              Lead[]
+  pipelineStages     PipelineStage[]
   rolePresets        RolePreset[]
   savedViews         SavedView[]
   sessions           Session[]
@@ -156,6 +157,7 @@ model Lead {
   companyName      String?
   source           String?
   status           String            @default("NEW")
+  stageId          String?
   notes            String?
   customFields     String?           @default("{}")
   assignedToId     String?
@@ -173,6 +175,7 @@ model Lead {
   assignedTo       User?             @relation("AssignedTo", fields: [assignedToId], references: [id])
   company          Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
   createdBy        User?             @relation("CreatedBy", fields: [createdById], references: [id])
+  stage            PipelineStage?    @relation(fields: [stageId, companyId], references: [id, companyId], onDelete: Restrict)
 
   @@index([companyId])
   @@index([status])
@@ -181,7 +184,23 @@ model Lead {
   @@index([syncStatus])
   @@index([companyId, status])
   @@index([companyId, assignedToId])
+  @@index([stageId])
   @@map("leads")
+}
+
+model PipelineStage {
+  id        String   @id @default(cuid())
+  name      String
+  order     Int
+  companyId String
+  createdAt DateTime @default(now())
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  leads     Lead[]
+
+  @@index([companyId])
+  @@unique([id, companyId])
+  @@unique([companyId, order])
+  @@map("pipeline_stages")
 }
 
 model AuditLog {
